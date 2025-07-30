@@ -1,64 +1,107 @@
 package model;
 
-import java.beans.PropertyChangeListener;
+import controller.ChangeDirectoryController;
+
 import java.beans.PropertyChangeSupport;
+import java.io.IOException;
+import java.nio.file.*;
 
 /**
  * Class which actively monitors changes of the in the chosen Directory.
  * Lives in the model.
  */
 public class FileMonitor {
-    private PropertyChangeSupport changes;
 
+    private PropertyChangeSupport changes;
     /**
-     * Mutable string which contains the current file directory.
+     *
      */
-    private String myFileDirectory;
+    private WatchService myWatchService = null;
+    /**
+     *
+     */
+    private String myDirectoryString;
+    /**
+     *
+     */
+    private Path myPath;
     /**
      * boolean which holds if a directory has changed.
      */
-    private boolean hasDirectoryChanged;
+    private boolean myDirectoryChanged = false;
+    /**
+     *
+     */
+    private String myOldValue;
 
     FileMonitor(final PropertyChangeSupport thePropertyChange){
-        hasDirectoryChanged = false;
         changes = thePropertyChange;
+        myDirectoryString = "null";
+        myOldValue = null;
+
+        try{
+            myWatchService = FileSystems.getDefault().newWatchService();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
+
+        captureDirectory(ChangeDirectoryController.returnDefaultDirectory());
+
+
+    }
+
+    private void registerDirectory(){
+        try {
+            myPath.register(myWatchService,
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_DELETE,
+                    StandardWatchEventKinds.ENTRY_MODIFY
+                    );
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
     }
 
     /**
      * sets the file Directory of
      * @param theDirectory
      */
-    public void captureDirectory(String theDirectory) {
-        myFileDirectory = theDirectory;
-        //[INSERT] Initialization of Directory viewing
+    public void captureDirectory(final String theDirectory) {
+        //assumes theDirectory is valid
+
+        if(!theDirectory.equals(myDirectoryString)){ //check if the directory has changed
+            myPath = Paths.get(theDirectory);
+            registerDirectory();
+            myDirectoryString = theDirectory;
+        }
     }
 
     /**
      * immediately captured directory
      */
-    public void fireDirectory(){
-        changes.firePropertyChange("monitorDirectory",null,null);
+    private void fireDirectory(final String theNewValue){
+        //check if data is null
+
+        changes.firePropertyChange("monitorDirectory", myOldValue, theNewValue);
+        myOldValue = theNewValue;
     }
 
     /**
-     * is periodically called to check if the Directory has been updated
+     * is periodically called view changes and fire changes to view
      */
-    public void updateDirectory(){
+    public void monitoredDirectory(){
         //[DESIGN] Whenever a Directory has changes do...
-        if(hasDirectoryChanged){
-
+        try {
+            WatchKey key = myWatchService.take();
+            for(WatchEvent<?> event : key.pollEvents()){
+                String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
+                fireDirectory(fileEvent);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            System.exit(0);
         }
     }
-
-    /**
-     * acts on changes to the Directory and fire changes back to view
-     */
-    private void monitorDirectory(){
-        //[DESIGN] Whenever there are new changes do...
-        changes.firePropertyChange("monitorDirectory",null,null);
-    }
-
-    //Need to [DESIGN] a more specialized view for specific directory
-    //This will update independent ally from the rest of the view (needs to fire propertyChange)
-
 }

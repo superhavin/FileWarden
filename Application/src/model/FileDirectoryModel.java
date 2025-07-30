@@ -69,7 +69,7 @@ public class FileDirectoryModel {
      * @return current file directory
      */
     public String displayDirectory(){
-        myMonitor.fireDirectory();
+        myMonitor.monitoredDirectory(); //monitors the directory fires changes to view
         //[INSERT] Refine the current fileDirectory for myDisplayLabel
         return myFileDirectory;
     }
@@ -91,7 +91,7 @@ public class FileDirectoryModel {
     public void advance(){
         if(isActive){
             //[INSERT] periodic checks for file watching
-            myMonitor.updateDirectory();
+            myMonitor.monitoredDirectory();
         }
     }
 

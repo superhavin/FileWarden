@@ -1,7 +1,6 @@
 package view;
 
-import java.awt.EventQueue;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
@@ -39,9 +38,17 @@ public class FileView extends JPanel implements PropertyChangeListener {
     public FileView(){
         GridLayout theLayout = new GridLayout(0, 2);
         setLayout(theLayout);
+
         myStartButton = new JButton("Start Game");
         myStartButton.setMnemonic('n');
-        myDisplayLabel = new JLabel("Die1 value");
+
+        myChangeDirectoryButton = new JButton("Change Directory");
+
+        myDisplayLabel = new JLabel(""); //visualization of system files
+
+        myDirectoryLabel = new JLabel(""); //visualization of monitored directory
+
+        myNewDirectoryField = new JFormattedTextField();
 
         add(myStartButton);
         add(myChangeDirectoryButton);
@@ -72,6 +79,7 @@ public class FileView extends JPanel implements PropertyChangeListener {
                 if (fileDirectoryModel.getGameActive()){
                     String refinedDirectory = ChangeDirectoryController.refineDirectory(myNewDirectoryField.getText());
                     fileDirectoryModel.setDirectory(refinedDirectory); //need nullException for grabbing textField
+
                 }
                 else{
                     JOptionPane.showMessageDialog(null, "Game not active!");
@@ -81,22 +89,18 @@ public class FileView extends JPanel implements PropertyChangeListener {
         });
     }
 
-
-    public static void main(final String[] theArgs) {
-        EventQueue.invokeLater(new Runnable() {
+    public static void createAndShowGUI(final int theWidth, final int theHeight){
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                final FileView mainPanel =
-                        new FileView();
-
-                // A size for the JFrame.
-                //final Dimension frameSize = new Dimension(400, 400);
+                final FileView mainPanel = new FileView();
 
                 FileDirectoryModel.getInstance().addPropertyChangeListener(mainPanel);
-                final JFrame window = new JFrame("The Game of Craps");
+                final JFrame window = new JFrame("FileWarden");
+
+                window.setSize(new Dimension(theWidth, theHeight));
                 window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 window.setContentPane(mainPanel);
-                //window.setSize(frameSize);
                 window.pack();
                 window.setVisible(true);
             }
@@ -109,7 +113,7 @@ public class FileView extends JPanel implements PropertyChangeListener {
         if (evt.getPropertyName() == "active"){
             if ((boolean) evt.getNewValue() == false) {
                 myChangeDirectoryButton.setEnabled(false);
-                JOptionPane.showMessageDialog(null, "Game not active!");
+                JOptionPane.showMessageDialog(null, "Application not active!");
             }
         }
 
