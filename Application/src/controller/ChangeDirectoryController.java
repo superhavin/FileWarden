@@ -13,11 +13,6 @@ public class ChangeDirectoryController {
     private final static String EMPTY_STRING = "";
 
     /**
-     * Default starting directory.
-     */
-    private static final String DEFAULT_DIRECTORY = "C:\\";
-
-    /**
      * Method to verify the directory String.
      * Refines directory strings to be exceptionable (with the Operating System).
      * @param myFileDirectory unchecked String from changeDirectoryField
@@ -40,7 +35,15 @@ public class ChangeDirectoryController {
      */
     public static String returnDefaultDirectory(){
         //[INSERT] method to find the operating system of the filesystem, and return the default directory
-
-        return  DEFAULT_DIRECTORY;
+        final String OS = System.getProperty("os.name");
+        if(OS.contains("Linux")){
+            return "/home/";
+        } else if (OS.contains("Windows")) {
+            return "C:\\";
+        } else if (OS.contains("Mac OS")) {
+            return "/";
+        } else {
+            return "/";
+        }
     }
 }

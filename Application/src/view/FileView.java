@@ -125,7 +125,7 @@ public class FileView extends JPanel implements PropertyChangeListener {
 
         if (evt.getPropertyName() == "monitorDirectory"){
             //[INSERT] the display of the monitored Directory
-            myDirectoryLabel.setText(null);
+            myDirectoryLabel.setText((String) evt.getNewValue());
         }
     }
 }

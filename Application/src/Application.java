@@ -1,6 +1,10 @@
+import controller.ChangeDirectoryController;
+import model.FileMonitor;
 import view.FileView;
 
 import javax.swing.*;
+
+import java.sql.SQLOutput;
 
 import static view.FileView.createAndShowGUI;
 
@@ -21,7 +25,6 @@ public class Application {
             public void run() {
                 createAndShowGUI(300, 150);
             }
-
         });
         // ......
     }

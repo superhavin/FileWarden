@@ -34,9 +34,9 @@ public class FileMonitor {
      */
     private String myOldValue;
 
-    FileMonitor(final PropertyChangeSupport thePropertyChange){
+    public FileMonitor(final PropertyChangeSupport thePropertyChange){
         changes = thePropertyChange;
-        myDirectoryString = "null";
+        myDirectoryString = "";
         myOldValue = null;
 
         try{
@@ -47,8 +47,6 @@ public class FileMonitor {
         }
 
         captureDirectory(ChangeDirectoryController.returnDefaultDirectory());
-
-
     }
 
     private void registerDirectory(){
@@ -91,12 +89,13 @@ public class FileMonitor {
     /**
      * is periodically called view changes and fire changes to view
      */
-    public void monitoredDirectory(){
+    public void monitorDirectory(){
         //[DESIGN] Whenever a Directory has changes do...
         try {
             WatchKey key = myWatchService.take();
             for(WatchEvent<?> event : key.pollEvents()){
                 String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
+
                 fireDirectory(fileEvent);
             }
         } catch (InterruptedException e) {
