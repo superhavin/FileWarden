@@ -1,64 +1,146 @@
 package model;
 
-import java.beans.PropertyChangeListener;
+import controller.ChangeDirectoryController;
+
 import java.beans.PropertyChangeSupport;
+import java.io.IOException;
+import java.nio.file.*;
 
 /**
  * Class which actively monitors changes of the in the chosen Directory.
  * Lives in the model.
  */
 public class FileMonitor {
-    private PropertyChangeSupport changes;
 
+    private final PropertyChangeSupport changes;
     /**
-     * Mutable string which contains the current file directory.
+     *
      */
-    private String myFileDirectory;
+    private WatchService myWatchService;
     /**
-     * boolean which holds if a directory has changed.
+     *
      */
-    private boolean hasDirectoryChanged;
+    private String myDirectoryString;
+    /**
+     *
+     */
+    private Path myPath;
+    /**
+     * boolean if the directory is monitored.
+     */
+    private volatile boolean isMonitoringActive;
+    /**
+     *
+     */
+    private String myOldValue;
+    /**
+     *
+     */
+    private Thread monitorThread;
 
-    FileMonitor(final PropertyChangeSupport thePropertyChange){
-        hasDirectoryChanged = false;
+    public FileMonitor(final PropertyChangeSupport thePropertyChange, final String theDirectory){
         changes = thePropertyChange;
+        myWatchService = null;
+        myDirectoryString = "";
+        myPath = null;
+        isMonitoringActive = false;
+        myOldValue = "";
+        monitorThread = null;
+
+        try{
+            myWatchService = FileSystems.getDefault().newWatchService();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
+
+        captureDirectory(theDirectory);
+    }
+
+    private void registerDirectory(){
+        try {
+            myPath.register(myWatchService,
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_DELETE,
+                    StandardWatchEventKinds.ENTRY_MODIFY
+                    );
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
     }
 
     /**
      * sets the file Directory of
      * @param theDirectory
      */
-    public void captureDirectory(String theDirectory) {
-        myFileDirectory = theDirectory;
-        //[INSERT] Initialization of Directory viewing
+    public void captureDirectory(final String theDirectory) {
+        //assumes theDirectory is valid
+
+        if(!theDirectory.equals(myDirectoryString)){ //check if the directory has changed
+            myPath = Paths.get(theDirectory);
+            registerDirectory();
+            myDirectoryString = theDirectory;
+        }
     }
 
     /**
      * immediately captured directory
      */
-    public void fireDirectory(){
-        changes.firePropertyChange("monitorDirectory",null,null);
+    private void fireDirectory(final String theNewValue){
+        changes.firePropertyChange("monitorDirectory", myOldValue, theNewValue); //check if data is equal, does not fire
+        myOldValue = theNewValue;
     }
 
     /**
-     * is periodically called to check if the Directory has been updated
+     * is periodically called view changes and fire changes to view
      */
-    public void updateDirectory(){
-        //[DESIGN] Whenever a Directory has changes do...
-        if(hasDirectoryChanged){
+    public void monitorDirectory(){
+        if(isMonitoringActive){
+            return;
+        }
 
+        isMonitoringActive = true;
+        monitorThread = new Thread(() -> {
+            //[DESIGN] Whenever a Directory has changes do...
+            while(isMonitoringActive) {
+                try {
+                    WatchKey key = myWatchService.take();
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
+
+                        System.out.println(fileEvent);
+
+                        fireDirectory(fileEvent);
+                    }
+
+                    boolean valid = key.reset();
+
+                    if (!valid) {
+                        System.out.println("WatchKey no longer valid. Stopping monitor.");
+                        break;
+                    }
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                    System.out.println("Monitor Thread Stopped");
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+
+        monitorThread.start();
+    }
+
+    public void stopMonitoring(){
+        isMonitoringActive = false;
+        if(monitorThread != null){
+            monitorThread.interrupt();
+            monitorThread = null;
         }
     }
 
-    /**
-     * acts on changes to the Directory and fire changes back to view
-     */
-    private void monitorDirectory(){
-        //[DESIGN] Whenever there are new changes do...
-        changes.firePropertyChange("monitorDirectory",null,null);
+    private boolean isMonitoring(){
+        return isMonitoringActive;
     }
-
-    //Need to [DESIGN] a more specialized view for specific directory
-    //This will update independent ally from the rest of the view (needs to fire propertyChange)
-
 }
