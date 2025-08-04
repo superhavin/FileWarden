@@ -12,11 +12,11 @@ import java.nio.file.*;
  */
 public class FileMonitor {
 
-    private PropertyChangeSupport changes;
+    private final PropertyChangeSupport changes;
     /**
      *
      */
-    private WatchService myWatchService = null;
+    private WatchService myWatchService;
     /**
      *
      */
@@ -26,18 +26,26 @@ public class FileMonitor {
      */
     private Path myPath;
     /**
-     * boolean which holds if a directory has changed.
+     * boolean if the directory is monitored.
      */
-    private boolean myDirectoryChanged = false;
+    private volatile boolean isMonitoringActive;
     /**
      *
      */
     private String myOldValue;
+    /**
+     *
+     */
+    private Thread monitorThread;
 
-    public FileMonitor(final PropertyChangeSupport thePropertyChange){
+    public FileMonitor(final PropertyChangeSupport thePropertyChange, final String theDirectory){
         changes = thePropertyChange;
+        myWatchService = null;
         myDirectoryString = "";
-        myOldValue = null;
+        myPath = null;
+        isMonitoringActive = false;
+        myOldValue = "";
+        monitorThread = null;
 
         try{
             myWatchService = FileSystems.getDefault().newWatchService();
@@ -46,7 +54,7 @@ public class FileMonitor {
             System.exit(0);
         }
 
-        captureDirectory(ChangeDirectoryController.returnDefaultDirectory());
+        captureDirectory(theDirectory);
     }
 
     private void registerDirectory(){
@@ -80,9 +88,7 @@ public class FileMonitor {
      * immediately captured directory
      */
     private void fireDirectory(final String theNewValue){
-        //check if data is null
-
-        changes.firePropertyChange("monitorDirectory", myOldValue, theNewValue);
+        changes.firePropertyChange("monitorDirectory", myOldValue, theNewValue); //check if data is equal, does not fire
         myOldValue = theNewValue;
     }
 
@@ -90,17 +96,51 @@ public class FileMonitor {
      * is periodically called view changes and fire changes to view
      */
     public void monitorDirectory(){
-        //[DESIGN] Whenever a Directory has changes do...
-        try {
-            WatchKey key = myWatchService.take();
-            for(WatchEvent<?> event : key.pollEvents()){
-                String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
-
-                fireDirectory(fileEvent);
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            System.exit(0);
+        if(isMonitoringActive){
+            return;
         }
+
+        isMonitoringActive = true;
+        monitorThread = new Thread(() -> {
+            //[DESIGN] Whenever a Directory has changes do...
+            while(isMonitoringActive) {
+                try {
+                    WatchKey key = myWatchService.take();
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
+
+                        System.out.println(fileEvent);
+
+                        fireDirectory(fileEvent);
+                    }
+
+                    boolean valid = key.reset();
+
+                    if (!valid) {
+                        System.out.println("WatchKey no longer valid. Stopping monitor.");
+                        break;
+                    }
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                    System.out.println("Monitor Thread Stopped");
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+
+        monitorThread.start();
+    }
+
+    public void stopMonitoring(){
+        isMonitoringActive = false;
+        if(monitorThread != null){
+            monitorThread.interrupt();
+            monitorThread = null;
+        }
+    }
+
+    private boolean isMonitoring(){
+        return isMonitoringActive;
     }
 }

@@ -13,9 +13,8 @@ import static view.FileView.createAndShowGUI;
  */
 public class Application {
     // Name-constants to define the various dimensions
-    public static final int WINDOW_WIDTH = 300;
-    public static final int WINDOW_HEIGHT = 150;
-    // ......
+    public static final int WINDOW_WIDTH = 650;
+    public static final int WINDOW_HEIGHT = 950;
 
 
     public static void main(String[] args) {
@@ -23,9 +22,9 @@ public class Application {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                createAndShowGUI(300, 150);
+                createAndShowGUI(WINDOW_WIDTH, WINDOW_HEIGHT);
             }
         });
-        // ......
+
     }
 }

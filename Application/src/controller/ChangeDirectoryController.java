@@ -11,6 +11,10 @@ public class ChangeDirectoryController {
      * Constant empty String for setting null strings in case of NullExceptions
      */
     private final static String EMPTY_STRING = "";
+    /**
+     *
+     */
+    private final static String OS = System.getProperty("os.name");
 
     /**
      * Method to verify the directory String.
@@ -26,6 +30,8 @@ public class ChangeDirectoryController {
         //[INSERT] verify directory string matches the Operating System of the application
         //maybe add ability to modify directory string to match current Operating System
 
+        //if(OS.contains){}
+
         return theDirectory;
     }
 
@@ -34,8 +40,6 @@ public class ChangeDirectoryController {
      * @return the default directory
      */
     public static String returnDefaultDirectory(){
-        //[INSERT] method to find the operating system of the filesystem, and return the default directory
-        final String OS = System.getProperty("os.name");
         if(OS.contains("Linux")){
             return "/home/";
         } else if (OS.contains("Windows")) {
