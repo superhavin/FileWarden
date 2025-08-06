@@ -24,7 +24,7 @@ public class FileDirectoryModel {
     private boolean isActive = false;
 
     /**
-     * The active monitor for our the chosen directory
+     * The active monitor for our the chosen directory.
      */
     private FileMonitor myMonitor;
 

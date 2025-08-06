@@ -5,6 +5,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.Serial;
+import java.io.Serializable;
 import javax.swing.*;
 
 import controller.ChangeDirectoryController;
@@ -13,7 +15,9 @@ import model.FileDirectoryModel;
 /**
  * The view of the Application.
  */
-public class FileView extends JPanel implements PropertyChangeListener {
+public class FileView extends JPanel implements PropertyChangeListener, Serializable {
+    @Serial
+    private static final long serialVersionUID = 3L;
     /**
      * Button to start the application.
      */
@@ -50,7 +54,7 @@ public class FileView extends JPanel implements PropertyChangeListener {
         setLayout(theLayout);
 
         myStartButton = new JButton("Start");
-        myStartButton.setMnemonic('n');
+        myStartButton.setMnemonic('s');
 
         myChangeDirectoryButton = new JButton("Change Directory");
         myChangeDirectoryButton.setEnabled(false);
@@ -131,7 +135,6 @@ public class FileView extends JPanel implements PropertyChangeListener {
 
                 window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 window.setContentPane(mainPanel);
-                //window.setLocationRelativeTo(null);
                 window.pack();
                 window.setVisible(true);
             }
@@ -147,7 +150,6 @@ public class FileView extends JPanel implements PropertyChangeListener {
                 myDirectoryLabel.setEnabled(true);
                 myNewDirectoryField.setEnabled(true);
                 myMonitorButton.setEnabled(true);
-                JOptionPane.showMessageDialog(null, "Application is active!");
             }else{
                 myChangeDirectoryButton.setEnabled(false);
                 myDirectoryLabel.setEnabled(false);
@@ -158,18 +160,18 @@ public class FileView extends JPanel implements PropertyChangeListener {
                 myDisplayLabel.setText(BLANK);
                 myNewDirectoryField.setText(BLANK);
                 myDirectoryLabel.setText(BLANK);
-
-                JOptionPane.showMessageDialog(null, "Application not active!");
             }
         }
 
         if (evt.getPropertyName() == "changeDirectory"){
-            myDisplayLabel.setText((String) evt.getNewValue());
+            String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
+            myDisplayLabel.setText(theView);
         }
 
         if (evt.getPropertyName() == "monitorDirectory"){
-            //[INSERT] the display of the monitored Directory
-            myDirectoryLabel.setText((String) evt.getNewValue());
+            String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
+            //[INSERT] the display of the monitored Directory, modify the view
+            myDirectoryLabel.setText(theView);
         }
     }
 }

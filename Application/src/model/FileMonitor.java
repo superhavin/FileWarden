@@ -85,11 +85,14 @@ public class FileMonitor {
     }
 
     /**
-     * immediately captured directory
+     * fired information from the captured directory
      */
-    private void fireDirectory(final String theNewValue){
-        changes.firePropertyChange("monitorDirectory", myOldValue, theNewValue); //check if data is equal, does not fire
-        myOldValue = theNewValue;
+    private void fireDirectory(final WatchEvent<?> event){
+
+        String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
+        //add additional firing
+        changes.firePropertyChange("monitorDirectory", myOldValue, fileEvent); //check if data is equal, does not fire
+        myOldValue = fileEvent;
     }
 
     /**
@@ -107,11 +110,7 @@ public class FileMonitor {
                 try {
                     WatchKey key = myWatchService.take();
                     for (WatchEvent<?> event : key.pollEvents()) {
-                        String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
-
-                        System.out.println(fileEvent);
-
-                        fireDirectory(fileEvent);
+                        fireDirectory(event);
                     }
 
                     boolean valid = key.reset();
@@ -121,7 +120,6 @@ public class FileMonitor {
                         break;
                     }
                 } catch (InterruptedException e) {
-                    //e.printStackTrace();
                     System.out.println("Monitor Thread Stopped");
                     Thread.currentThread().interrupt();
                     break;
@@ -136,6 +134,7 @@ public class FileMonitor {
         isMonitoringActive = false;
         if(monitorThread != null){
             monitorThread.interrupt();
+            System.gc(); //ensure the Thread is 'closed'
             monitorThread = null;
         }
     }
