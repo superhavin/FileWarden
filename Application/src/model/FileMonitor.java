@@ -91,6 +91,7 @@ public class FileMonitor {
 
         String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
         //add additional firing
+        System.out.println(fileEvent);
         changes.firePropertyChange("monitorDirectory", myOldValue, fileEvent); //check if data is equal, does not fire
         myOldValue = fileEvent;
     }

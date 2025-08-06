@@ -140,9 +140,12 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
 
             case "changeDirectory", "monitorDirectory":
                 String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
-                myDisplayLabel.setText(theView);
+                if(evt.getPropertyName() == "changeDirectory"){
+                    myDisplayLabel.setText(theView);
+                }else{
+                    myDirectoryLabel.setText(theView);
+                }
                 break;
-
         }
     }
 
