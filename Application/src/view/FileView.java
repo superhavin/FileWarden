@@ -4,8 +4,6 @@ import controller.ChangeDirectoryController;
 import model.FileDirectoryModel;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.Serial;
@@ -29,11 +27,11 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
     /**
      * Label to show basic system information.
      */
-    private JLabel myDisplayLabel;
+    private JLabel myCurrentDirectoryLabel;
     /**
      * Label to display current directory.
      */
-    private JLabel myDirectoryLabel;
+    private JLabel myMonitoredLabel;
     /**
      * Field to grab new directory.
      */
@@ -59,11 +57,11 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
         myChangeDirectoryButton = new JButton("Change Directory");
         myChangeDirectoryButton.setEnabled(false);
 
-        myDisplayLabel = new JLabel(""); //visualization of system files
-        myDisplayLabel.setEnabled(false);
+        myCurrentDirectoryLabel = new JLabel(""); //visualization of system files
+        myCurrentDirectoryLabel.setEnabled(false);
 
-        myDirectoryLabel = new JLabel(""); //visualization of monitored directory
-        myDirectoryLabel.setEnabled(false);
+        myMonitoredLabel = new JLabel(""); //visualization of monitored directory
+        myMonitoredLabel.setEnabled(false);
 
         myNewDirectoryField = new JFormattedTextField();
         myNewDirectoryField.setEnabled(false);
@@ -73,8 +71,8 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
 
         add(myStartButton);
         add(myChangeDirectoryButton);
-        add(myDisplayLabel);
-        add(myDirectoryLabel);
+        add(myCurrentDirectoryLabel);
+        add(myMonitoredLabel);
         add(myNewDirectoryField);
         add(myMonitorButton);
 
@@ -135,15 +133,15 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
     public void propertyChange(PropertyChangeEvent evt) {
         switch (evt.getPropertyName()) {
             case "active":
-                setAllControls((boolean)evt.getNewValue());
+                setAllControls((boolean) evt.getNewValue());
                 break;
 
             case "changeDirectory", "monitorDirectory":
                 String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
-                if(evt.getPropertyName() == "changeDirectory"){
-                    myDisplayLabel.setText(theView);
+                if(evt.getPropertyName().equals("changeDirectory")){
+                    myCurrentDirectoryLabel.setText(theView);
                 }else{
-                    myDirectoryLabel.setText(theView);
+                    myMonitoredLabel.setText(theView);
                 }
                 break;
         }
@@ -153,18 +151,22 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
      * Helper method which disables and enables components of the panel
      */
     private void setAllControls(boolean status) {
-        myDisplayLabel.setEnabled(status);
+        myCurrentDirectoryLabel.setEnabled(status);
         myNewDirectoryField.setEnabled(status);
-        myDirectoryLabel.setEnabled(status);
+        myMonitoredLabel.setEnabled(status);
 
         myChangeDirectoryButton.setEnabled(status);
         myMonitorButton.setEnabled(status);
 
+        myStartButton.setText("Stop");
+
         if(!status){
             final String BLANK = "";
-            myDisplayLabel.setText(BLANK);
+            myCurrentDirectoryLabel.setText(BLANK);
             myNewDirectoryField.setText(BLANK);
-            myDirectoryLabel.setText(BLANK);
+            myMonitoredLabel.setText(BLANK);
+
+            myStartButton.setText("Start");
         }
     }
 }

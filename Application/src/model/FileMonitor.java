@@ -1,7 +1,5 @@
 package model;
 
-import controller.ChangeDirectoryController;
-
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.nio.file.*;
@@ -72,7 +70,7 @@ public class FileMonitor {
 
     /**
      * sets the file Directory of
-     * @param theDirectory
+     * @param theDirectory the file directory
      */
     public void captureDirectory(final String theDirectory) {
         //assumes theDirectory is valid
