@@ -1,5 +1,8 @@
 package view;
 
+import controller.ChangeDirectoryController;
+import model.FileDirectoryModel;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -8,9 +11,6 @@ import java.beans.PropertyChangeListener;
 import java.io.Serial;
 import java.io.Serializable;
 import javax.swing.*;
-
-import controller.ChangeDirectoryController;
-import model.FileDirectoryModel;
 
 /**
  * The view of the Application.
@@ -81,6 +81,20 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
         addListeners();
     }
 
+    private void setAllControls(boolean status) {
+        myChangeDirectoryButton.setEnabled(status);
+        myMonitorButton.setEnabled(status);
+        myNewDirectoryField.setEnabled(status);
+        directoryChooserButton.setEnabled(status);
+      
+        if(!status){
+            final String BLANK = "";
+            myDisplayLabel.setText(BLANK);
+            myNewDirectoryField.setText(BLANK);
+            myDirectoryLabel.setText(BLANK);
+        }
+    }
+
     private void addListeners() {
 
         myStartButton.addActionListener(new ActionListener() {
@@ -141,37 +155,23 @@ public class FileView extends JPanel implements PropertyChangeListener, Serializ
         });
     }
 
-
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == "active"){
-            if ((boolean)evt.getNewValue() == true) {
-                myChangeDirectoryButton.setEnabled(true);
-                myDirectoryLabel.setEnabled(true);
-                myNewDirectoryField.setEnabled(true);
-                myMonitorButton.setEnabled(true);
-            }else{
-                myChangeDirectoryButton.setEnabled(false);
-                myDirectoryLabel.setEnabled(false);
-                myNewDirectoryField.setEnabled(false);
-                myMonitorButton.setEnabled(false);
+        switch (evt.getPropertyName()) {
+            case "active":
+                setAllControls((boolean)evt.getNewValue());
+                break;
 
-                final String BLANK = "";
-                myDisplayLabel.setText(BLANK);
-                myNewDirectoryField.setText(BLANK);
-                myDirectoryLabel.setText(BLANK);
-            }
-        }
+            case "changeDirectory":
+                String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
+                myDisplayLabel.setText(theView);
+                break;
 
-        if (evt.getPropertyName() == "changeDirectory"){
-            String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
-            myDisplayLabel.setText(theView);
-        }
-
-        if (evt.getPropertyName() == "monitorDirectory"){
-            String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
-            //[INSERT] the display of the monitored Directory, modify the view
-            myDirectoryLabel.setText(theView);
+            case "monitorDirectory":
+                String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
+                //[INSERT] the display of the monitored Directory, modify the view
+                myDirectoryLabel.setText(theView);
+                break;
         }
     }
 }
