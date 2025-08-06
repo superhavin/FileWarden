@@ -2,10 +2,15 @@ package controller;
 
 import org.sqlite.SQLiteDataSource;
 
+import java.beans.PropertyChangeSupport;
+
 public class SQLController {
 
-    public static void createTables(){
-        SQLiteDataSource dataSource = null;
+    private final PropertyChangeSupport changes;
+    static SQLiteDataSource dataSource = null;
+
+    public SQLController(final PropertyChangeSupport changes) {
+        this.changes = changes;
 
         try {
             dataSource = new SQLiteDataSource();
@@ -14,17 +19,21 @@ public class SQLController {
             e.printStackTrace();
             System.exit(0);
         }
-
-
-        String query = "CREATE TABLE IF NOT EXISTS Directory(" +
-                "Filepath TEXT NOT NULL," + //"Attribute_Name Attribute_Type Constraints"
-                "";
     }
 
-    public static void runLookup(){
+    public static void createTables(){
 
+    }
 
+    public static void insertTables(){
 
+    }
+
+    public void runLookup(final String table){
+        String query = "SELECT * FROM " + table;
+        //run query then returns results and fires them
+        String resultSet = "";
+        changes.firePropertyChange("query", null, resultSet);
     }
 
 }

@@ -3,113 +3,155 @@ package view;
 import controller.ChangeDirectoryController;
 import model.FileDirectoryModel;
 
-import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.File;
+import java.io.Serial;
+import java.io.Serializable;
+import javax.swing.*;
 
-public class FileView extends JPanel implements PropertyChangeListener {
-    private final JButton myStartButton;
-    private final JButton myChangeDirectoryButton;
-    private final JButton myMonitorButton;
-    private final JButton directoryChooserButton;
-
-    private final JLabel myStatusLabel;
-    private final JTextField myNewDirectoryField;
-    private final JTextArea eventLogArea;
-    private final JScrollPane logScrollPane;
-
+/**
+ * The view of the Application.
+ */
+public class FileView extends JPanel implements PropertyChangeListener, Serializable {
+    @Serial
+    private static final long serialVersionUID = 3L;
+    /**
+     * Button to start the application.
+     */
+    private JButton myStartButton;
+    /**
+     * Button to change the file directory.
+     */
+    private JButton myChangeDirectoryButton;
+    /**
+     * Label to show basic system information.
+     */
+    private JLabel myDisplayLabel;
+    /**
+     * Label to display current directory.
+     */
+    private JLabel myDirectoryLabel;
+    /**
+     * Field to grab new directory.
+     */
+    private JTextField myNewDirectoryField;
+    /**
+     * Button to start monitoring the grabbed Directory
+     */
+    private JButton myMonitorButton;
+    /**
+     * Static instance of the model.
+     */
     private static FileDirectoryModel fileDirectoryModel;
 
-    public FileView() {
+    public FileView(){
         fileDirectoryModel = FileDirectoryModel.getInstance();
-        setLayout(new BorderLayout(10, 10));
 
-        JPanel topPanel = new JPanel(new FlowLayout());
-        myStartButton = new JButton("Start / Reset");
+        GridLayout theLayout = new GridLayout(0, 2);
+        setLayout(theLayout);
+
+        myStartButton = new JButton("Start");
+        myStartButton.setMnemonic('s');
+
         myChangeDirectoryButton = new JButton("Change Directory");
+        myChangeDirectoryButton.setEnabled(false);
+
+        myDisplayLabel = new JLabel(""); //visualization of system files
+        myDisplayLabel.setEnabled(false);
+
+        myDirectoryLabel = new JLabel(""); //visualization of monitored directory
+        myDirectoryLabel.setEnabled(false);
+
+        myNewDirectoryField = new JFormattedTextField();
+        myNewDirectoryField.setEnabled(false);
+
         myMonitorButton = new JButton("Start Monitoring");
-        directoryChooserButton = new JButton("Select Directory");
-        myNewDirectoryField = new JTextField(30);
+        myMonitorButton.setEnabled(false);
 
-        topPanel.add(myStartButton);
-        topPanel.add(directoryChooserButton);
-        topPanel.add(myNewDirectoryField);
-        topPanel.add(myChangeDirectoryButton);
-        topPanel.add(myMonitorButton);
+        add(myStartButton);
+        add(myChangeDirectoryButton);
+        add(myDisplayLabel);
+        add(myDirectoryLabel);
+        add(myNewDirectoryField);
+        add(myMonitorButton);
 
-        add(topPanel, BorderLayout.NORTH);
-
-        myStatusLabel = new JLabel("Status: Inactive");
-        myStatusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        myStatusLabel.setForeground(Color.RED);
-        add(myStatusLabel, BorderLayout.SOUTH);
-
-        eventLogArea = new JTextArea(20, 50);
-        eventLogArea.setEditable(false);
-        logScrollPane = new JScrollPane(eventLogArea);
-        add(logScrollPane, BorderLayout.CENTER);
-
-        setAllControlsEnabled(false);
         addListeners();
     }
 
-    private void setAllControlsEnabled(boolean enabled) {
-        myChangeDirectoryButton.setEnabled(enabled);
-        myMonitorButton.setEnabled(enabled);
-        myNewDirectoryField.setEnabled(enabled);
-        directoryChooserButton.setEnabled(enabled);
+    private void setAllControls(boolean status) {
+        myChangeDirectoryButton.setEnabled(status);
+        myMonitorButton.setEnabled(status);
+        myNewDirectoryField.setEnabled(status);
+        directoryChooserButton.setEnabled(status);
+      
+        if(!status){
+            final String BLANK = "";
+            myDisplayLabel.setText(BLANK);
+            myNewDirectoryField.setText(BLANK);
+            myDirectoryLabel.setText(BLANK);
+        }
     }
 
     private void addListeners() {
-        myStartButton.addActionListener(e -> {
-            if (!fileDirectoryModel.getGameActive()) {
-                fileDirectoryModel.startApp();
-            } else {
-                fileDirectoryModel.resetApp();
+
+        myStartButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(final ActionEvent theEvent) {
+                if(!fileDirectoryModel.getGameActive()){
+                    fileDirectoryModel.startApp();
+                    //[INSERT] initialization of other displays
+                }else{
+                    fileDirectoryModel.resetApp();
+                }
             }
         });
 
-        myChangeDirectoryButton.addActionListener(e -> {
-            if (fileDirectoryModel.getGameActive()) {
-                String refinedDirectory = ChangeDirectoryController.refineDirectory(myNewDirectoryField.getText());
-                fileDirectoryModel.changeDirectory(refinedDirectory);
-            } else {
-                JOptionPane.showMessageDialog(null, "Application not active!");
+        myChangeDirectoryButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(final ActionEvent theEvent) {
+                if (fileDirectoryModel.getGameActive()){
+                    String refinedDirectory = ChangeDirectoryController.refineDirectory(myNewDirectoryField.getText());
+                    fileDirectoryModel.changeDirectory(refinedDirectory); //need nullException for grabbing textField
+                }
+                else{
+                    JOptionPane.showMessageDialog(null, "Application not active!");
+                }
+
             }
         });
 
-        myMonitorButton.addActionListener(e -> {
-            if (fileDirectoryModel.getGameActive()) {
-                fileDirectoryModel.displayDirectory();
-            } else {
-                JOptionPane.showMessageDialog(null, "Application not active!");
-            }
-        });
-
-        directoryChooserButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            int result = chooser.showOpenDialog(null);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedDir = chooser.getSelectedFile();
-                myNewDirectoryField.setText(selectedDir.getAbsolutePath());
+        myMonitorButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(fileDirectoryModel.getGameActive()){
+                    fileDirectoryModel.displayDirectory();
+                }else{
+                    JOptionPane.showMessageDialog(null, "Application not active!");
+                }
             }
         });
     }
 
-    public static void createAndShowGUI(final int theWidth, final int theHeight) {
-        javax.swing.SwingUtilities.invokeLater(() -> {
-            final FileView mainPanel = new FileView();
-            fileDirectoryModel.addPropertyChangeListener(mainPanel);
-            final JFrame window = new JFrame("FileWarden");
+    public static void createAndShowGUI(final int theWidth, final int theHeight){
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                final FileView mainPanel = new FileView();
 
-            mainPanel.setPreferredSize(new Dimension(theWidth, theHeight));
-            window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            window.setContentPane(mainPanel);
-            window.pack();
-            window.setVisible(true);
+                fileDirectoryModel.addPropertyChangeListener(mainPanel);
+
+                final JFrame window = new JFrame("FileWarden");
+
+                mainPanel.setPreferredSize(new Dimension(theWidth, theHeight));
+
+                window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                window.setContentPane(mainPanel);
+                window.pack();
+                window.setVisible(true);
+            }
         });
     }
 
@@ -117,25 +159,18 @@ public class FileView extends JPanel implements PropertyChangeListener {
     public void propertyChange(PropertyChangeEvent evt) {
         switch (evt.getPropertyName()) {
             case "active":
-                boolean isActive = (boolean) evt.getNewValue();
-                setAllControlsEnabled(isActive);
-                myStatusLabel.setText("Status: " + (isActive ? "Active" : "Inactive"));
-                myStatusLabel.setForeground(isActive ? Color.GREEN.darker() : Color.RED);
-                if (!isActive) {
-                    myNewDirectoryField.setText("");
-                    eventLogArea.setText("");
-                }
+                setAllControls((boolean)evt.getNewValue());
                 break;
 
             case "changeDirectory":
-                String newDir = (String) evt.getNewValue();
-                eventLogArea.append("Changed directory to: " + newDir + "\n");
+                String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
+                myDisplayLabel.setText(theView);
                 break;
 
             case "monitorDirectory":
-                String eventMsg = (String) evt.getNewValue();
-                eventLogArea.append(eventMsg + "\n");
-                eventLogArea.setCaretPosition(eventLogArea.getDocument().getLength());
+                String theView = ChangeDirectoryController.visualizeDirectory((String) evt.getNewValue());
+                //[INSERT] the display of the monitored Directory, modify the view
+                myDirectoryLabel.setText(theView);
                 break;
         }
     }

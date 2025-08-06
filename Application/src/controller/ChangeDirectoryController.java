@@ -19,20 +19,20 @@ public class ChangeDirectoryController {
     /**
      * Method to verify the directory String.
      * Refines directory strings to be exceptionable (with the Operating System).
-     * @param myFileDirectory unchecked String from changeDirectoryField
+     * @param theDirectory unchecked String from changeDirectoryField
      * @return valid directory String
      */
-    public static String refineDirectory(final String myFileDirectory) {
-        String theDirectory;
+    public static String refineDirectory(final String theDirectory) {
+        String directory;
 
-        theDirectory = Objects.requireNonNullElse(myFileDirectory, EMPTY_STRING); //might need a try catch for null
+        directory = Objects.requireNonNullElse(theDirectory, EMPTY_STRING); //might need a try catch for null
 
         //[INSERT] verify directory string matches the Operating System of the application
         //maybe add ability to modify directory string to match current Operating System
 
         //if(OS.contains){}
 
-        return theDirectory;
+        return directory;
     }
 
     /**
@@ -49,5 +49,13 @@ public class ChangeDirectoryController {
         } else {
             return "/";
         }
+    }
+
+    public static String visualizeDirectory(final String theDirectory) {
+        String directory;
+
+        directory = Objects.requireNonNullElse(theDirectory, EMPTY_STRING); //might need a try catch for null
+
+        return directory;
     }
 }
