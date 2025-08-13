@@ -1,146 +1,117 @@
 package model;
 
-import controller.ChangeDirectoryController;
-
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Class which actively monitors changes of the in the chosen Directory.
- * Lives in the model.
+ * Watches a directory using WatchService. Filters by extensions set via setExtensionsToWatch.
+ * Emits FileRecord entries into FileDirectoryModel.
  */
 public class FileMonitor {
+    private final FileDirectoryModel model;
+    private WatchService watchService;
+    private Thread watchThread;
+    private Path currentDir;
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final Set<String> extensionsToWatch = Collections.synchronizedSet(new HashSet<>()); // store in lower-case without dot
+    private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
-    private final PropertyChangeSupport changes;
-    /**
-     *
-     */
-    private WatchService myWatchService;
-    /**
-     *
-     */
-    private String myDirectoryString;
-    /**
-     *
-     */
-    private Path myPath;
-    /**
-     * boolean if the directory is monitored.
-     */
-    private volatile boolean isMonitoringActive;
-    /**
-     *
-     */
-    private String myOldValue;
-    /**
-     *
-     */
-    private Thread monitorThread;
-
-    public FileMonitor(final PropertyChangeSupport thePropertyChange, final String theDirectory){
-        changes = thePropertyChange;
-        myWatchService = null;
-        myDirectoryString = "";
-        myPath = null;
-        isMonitoringActive = false;
-        myOldValue = "";
-        monitorThread = null;
-
-        try{
-            myWatchService = FileSystems.getDefault().newWatchService();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(0);
-        }
-
-        captureDirectory(theDirectory);
+    public FileMonitor(FileDirectoryModel model) {
+        this.model = model;
+        // default extensions
+        setExtensionsToWatch(Arrays.asList("txt", "log", "csv"));
     }
 
-    private void registerDirectory(){
+    public void setExtensionsToWatch(Collection<String> exts) {
+        extensionsToWatch.clear();
+        for (String s : exts) {
+            if (s == null) continue;
+            s = s.trim().toLowerCase();
+            if (s.startsWith(".")) s = s.substring(1);
+            if (!s.isEmpty()) extensionsToWatch.add(s);
+        }
+        pcs.firePropertyChange("extensions", null, Collections.unmodifiableSet(extensionsToWatch));
+    }
+
+    public Set<String> getExtensionsToWatch() {
+        return Collections.unmodifiableSet(extensionsToWatch);
+    }
+
+    public void start(Path dir) throws IOException {
+        if (running.get()) throw new IllegalStateException("Already running");
+        if (dir == null) throw new IllegalArgumentException("dir cannot be null");
+        this.currentDir = dir;
+        watchService = FileSystems.getDefault().newWatchService();
+        dir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
+        running.set(true);
+        watchThread = new Thread(this::processEvents, "FileMonitorThread");
+        watchThread.setDaemon(true);
+        watchThread.start();
+        pcs.firePropertyChange("running", false, true);
+    }
+
+    public void stop() {
+        running.set(false);
         try {
-            myPath.register(myWatchService,
-                    StandardWatchEventKinds.ENTRY_CREATE,
-                    StandardWatchEventKinds.ENTRY_DELETE,
-                    StandardWatchEventKinds.ENTRY_MODIFY
-                    );
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(0);
+            if (watchService != null) watchService.close();
+        } catch (IOException ignored) {}
+        if (watchThread != null) {
+            try { watchThread.join(1000); } catch (InterruptedException ignored) {}
         }
+        pcs.firePropertyChange("running", true, false);
     }
 
-    /**
-     * sets the file Directory of
-     * @param theDirectory
-     */
-    public void captureDirectory(final String theDirectory) {
-        //assumes theDirectory is valid
-
-        if(!theDirectory.equals(myDirectoryString)){ //check if the directory has changed
-            myPath = Paths.get(theDirectory);
-            registerDirectory();
-            myDirectoryString = theDirectory;
-        }
+    public boolean isRunning() {
+        return running.get();
     }
 
-    /**
-     * immediately captured directory
-     */
-    private void fireDirectory(final String theNewValue){
-        changes.firePropertyChange("monitorDirectory", myOldValue, theNewValue); //check if data is equal, does not fire
-        myOldValue = theNewValue;
+    public Path getCurrentDir() {
+        return currentDir;
     }
 
-    /**
-     * is periodically called view changes and fire changes to view
-     */
-    public void monitorDirectory(){
-        if(isMonitoringActive){
-            return;
-        }
-
-        isMonitoringActive = true;
-        monitorThread = new Thread(() -> {
-            //[DESIGN] Whenever a Directory has changes do...
-            while(isMonitoringActive) {
-                try {
-                    WatchKey key = myWatchService.take();
-                    for (WatchEvent<?> event : key.pollEvents()) {
-                        String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
-
-                        System.out.println(fileEvent);
-
-                        fireDirectory(fileEvent);
-                    }
-
-                    boolean valid = key.reset();
-
-                    if (!valid) {
-                        System.out.println("WatchKey no longer valid. Stopping monitor.");
-                        break;
-                    }
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                    System.out.println("Monitor Thread Stopped");
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+    private void processEvents() {
+        while (running.get()) {
+            WatchKey key;
+            try {
+                key = watchService.take();
+            } catch (InterruptedException | ClosedWatchServiceException e) {
+                break;
             }
-        });
-
-        monitorThread.start();
-    }
-
-    public void stopMonitoring(){
-        isMonitoringActive = false;
-        if(monitorThread != null){
-            monitorThread.interrupt();
-            monitorThread = null;
+            for (WatchEvent<?> ev : key.pollEvents()) {
+                WatchEvent.Kind<?> kind = ev.kind();
+                if (kind == StandardWatchEventKinds.OVERFLOW) continue;
+                WatchEvent<Path> we = (WatchEvent<Path>) ev;
+                Path filename = we.context();
+                Path fullPath = currentDir.resolve(filename);
+                String name = filename.toString();
+                String ext = "";
+                int i = name.lastIndexOf('.');
+                if (i > -1 && i < name.length()-1) {
+                    ext = name.substring(i+1).toLowerCase();
+                }
+                boolean matched = extensionsToWatch.isEmpty() || extensionsToWatch.contains(ext);
+                if (!matched) continue;
+                String evt = "UNKNOWN";
+                if (kind == StandardWatchEventKinds.ENTRY_CREATE) evt = "CREATED";
+                if (kind == StandardWatchEventKinds.ENTRY_DELETE) evt = "DELETED";
+                if (kind == StandardWatchEventKinds.ENTRY_MODIFY) evt = "MODIFIED";
+                FileRecord fr = new FileRecord(name, ext, fullPath.toAbsolutePath().toString(), evt, LocalDateTime.now());
+                model.addRecord(fr);
+            }
+            boolean valid = key.reset();
+            if (!valid) break;
         }
     }
 
-    private boolean isMonitoring(){
-        return isMonitoringActive;
+    public void addPropertyChangeListener(java.beans.PropertyChangeListener l) {
+        pcs.addPropertyChangeListener(l);
+    }
+
+    public void removePropertyChangeListener(java.beans.PropertyChangeListener l) {
+        pcs.removePropertyChangeListener(l);
     }
 }

@@ -1,142 +1,308 @@
 package view;
 
 import controller.ChangeDirectoryController;
+import controller.CSVExportController;
+import controller.QueryController;
+import controller.SQLController;
+import model.EmailService;
 import model.FileDirectoryModel;
+import model.FileMonitor;
+import model.FileRecord;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.nio.file.Path;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.List;
+import jakarta.mail.*;
 
-public class FileView extends JPanel implements PropertyChangeListener {
-    private final JButton myStartButton;
-    private final JButton myChangeDirectoryButton;
-    private final JButton myMonitorButton;
-    private final JButton directoryChooserButton;
+/**
+ * Main application GUI view.
+ */
+public class FileView extends JFrame {
+    private final FileDirectoryModel model;
+    private final FileMonitor monitor;
+    private final SQLController sqlController;
+    private final ChangeDirectoryController changeDirectoryController;
+    private final QueryController queryController;
 
-    private final JLabel myStatusLabel;
-    private final JTextField myNewDirectoryField;
-    private final JTextArea eventLogArea;
-    private final JScrollPane logScrollPane;
+    private final DefaultTableModel tableModel;
+    private Path monitoredPath;
 
-    private static FileDirectoryModel fileDirectoryModel;
+    public FileView(FileDirectoryModel model,
+                    FileMonitor monitor,
+                    SQLController sqlController,
+                    ChangeDirectoryController changeDirectoryController,
+                    QueryController queryController) {
+        super("File Watcher");
+        this.model = model;
+        this.monitor = monitor;
+        this.sqlController = sqlController;
+        this.changeDirectoryController = changeDirectoryController;
+        this.queryController = queryController;
 
-    public FileView() {
-        fileDirectoryModel = FileDirectoryModel.getInstance();
-        setLayout(new BorderLayout(10, 10));
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        setSize(1000, 600);
+        setLocationRelativeTo(null);
 
-        JPanel topPanel = new JPanel(new FlowLayout());
-        myStartButton = new JButton("Start / Reset");
-        myChangeDirectoryButton = new JButton("Change Directory");
-        myMonitorButton = new JButton("Start Monitoring");
-        directoryChooserButton = new JButton("Select Directory");
-        myNewDirectoryField = new JTextField(30);
+        // Menu
+        JMenuBar mb = new JMenuBar();
+        JMenu fileMenu = new JMenu("File");
+        JMenuItem startItem = new JMenuItem("Start Monitoring");
+        startItem.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
+        JMenuItem stopItem = new JMenuItem("Stop Monitoring");
+        stopItem.setAccelerator(KeyStroke.getKeyStroke("ctrl T"));
+        JMenuItem exitItem = new JMenuItem("Exit");
+        exitItem.setAccelerator(KeyStroke.getKeyStroke("ctrl Q"));
+        fileMenu.add(startItem);
+        fileMenu.add(stopItem);
+        fileMenu.addSeparator();
+        fileMenu.add(exitItem);
 
-        topPanel.add(myStartButton);
-        topPanel.add(directoryChooserButton);
-        topPanel.add(myNewDirectoryField);
-        topPanel.add(myChangeDirectoryButton);
-        topPanel.add(myMonitorButton);
+        JMenu dbMenu = new JMenu("Database");
+        JMenuItem saveItem = new JMenuItem("Save Current To DB");
+        JMenuItem queryItem = new JMenuItem("Query Database");
+        JMenuItem clearItem = new JMenuItem("Clear Database");
+        dbMenu.add(saveItem);
+        dbMenu.add(queryItem);
+        dbMenu.add(clearItem);
 
-        add(topPanel, BorderLayout.NORTH);
+        JMenu help = new JMenu("Help");
+        JMenuItem aboutItem = new JMenuItem("About");
+        help.add(aboutItem);
 
-        myStatusLabel = new JLabel("Status: Inactive");
-        myStatusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        myStatusLabel.setForeground(Color.RED);
-        add(myStatusLabel, BorderLayout.SOUTH);
+        mb.add(fileMenu);
+        mb.add(dbMenu);
+        mb.add(help);
+        setJMenuBar(mb);
 
-        eventLogArea = new JTextArea(20, 50);
-        eventLogArea.setEditable(false);
-        logScrollPane = new JScrollPane(eventLogArea);
-        add(logScrollPane, BorderLayout.CENTER);
+        // Toolbar
+        JToolBar toolBar = new JToolBar();
+        JButton btnStart = new JButton("Start");
+        JButton btnStop = new JButton("Stop");
+        JButton btnSave = new JButton("Save to DB");
+        JButton btnQuery = new JButton("Query DB");
+        toolBar.add(btnStart);
+        toolBar.add(btnStop);
+        toolBar.add(btnSave);
+        toolBar.add(btnQuery);
 
-        setAllControlsEnabled(false);
-        addListeners();
-    }
+        add(toolBar, BorderLayout.NORTH);
 
-    private void setAllControlsEnabled(boolean enabled) {
-        myChangeDirectoryButton.setEnabled(enabled);
-        myMonitorButton.setEnabled(enabled);
-        myNewDirectoryField.setEnabled(enabled);
-        directoryChooserButton.setEnabled(enabled);
-    }
+        // Center table
+        tableModel = new DefaultTableModel(new Object[]{"File Name", "Ext", "Path", "Activity", "DateTime"}, 0);
+        JTable table = new JTable(tableModel);
+        add(new JScrollPane(table), BorderLayout.CENTER);
 
-    private void addListeners() {
-        myStartButton.addActionListener(e -> {
-            if (!fileDirectoryModel.getGameActive()) {
-                fileDirectoryModel.startApp();
-            } else {
-                fileDirectoryModel.resetApp();
+        // Controls panel on the right
+        JPanel right = new JPanel(new GridLayout(0,1,6,6));
+        JButton chooseDir = new JButton("Choose Directory...");
+        JLabel currentDirLabel = new JLabel("No directory selected");
+        JTextField extText = new JTextField("txt,log,csv");
+        JButton setExt = new JButton("Set Extensions");
+        right.add(chooseDir);
+        right.add(currentDirLabel);
+        right.add(new JLabel("Watch Extensions (comma separated):"));
+        right.add(extText);
+        right.add(setExt);
+
+        // Email export controls
+        JButton exportCsvBtn = new JButton("Export Table to CSV");
+        right.add(exportCsvBtn);
+        JButton emailBtn = new JButton("Email CSV...");
+        right.add(emailBtn);
+
+        add(right, BorderLayout.EAST);
+
+        // Wire actions
+        startItem.addActionListener(e -> startMonitoring(currentDirLabel));
+        btnStart.addActionListener(e -> startMonitoring(currentDirLabel));
+        stopItem.addActionListener(e -> stopMonitoring());
+        btnStop.addActionListener(e -> stopMonitoring());
+
+        chooseDir.addActionListener(e -> {
+            Path p = changeDirectoryController.chooseDirectory(this);
+            if (p != null) {
+                monitoredPath = p;
+                currentDirLabel.setText("Dir: " + p.toAbsolutePath().toString());
             }
         });
 
-        myChangeDirectoryButton.addActionListener(e -> {
-            if (fileDirectoryModel.getGameActive()) {
-                String refinedDirectory = ChangeDirectoryController.refineDirectory(myNewDirectoryField.getText());
-                fileDirectoryModel.changeDirectory(refinedDirectory);
-            } else {
-                JOptionPane.showMessageDialog(null, "Application not active!");
-            }
+        setExt.addActionListener(e -> {
+            String text = extText.getText();
+            String[] parts = text.split(",");
+            monitor.setExtensionsToWatch(java.util.Arrays.asList(parts));
+            JOptionPane.showMessageDialog(this, "Extensions set.");
         });
 
-        myMonitorButton.addActionListener(e -> {
-            if (fileDirectoryModel.getGameActive()) {
-                fileDirectoryModel.displayDirectory();
-            } else {
-                JOptionPane.showMessageDialog(null, "Application not active!");
-            }
+        btnSave.addActionListener(e -> saveCurrentToDb());
+        saveItem.addActionListener(e -> saveCurrentToDb());
+
+        queryItem.addActionListener(e -> {
+            QueryView qv = new QueryView(this, queryController);
+            qv.setVisible(true);
+        });
+        btnQuery.addActionListener(e -> {
+            QueryView qv = new QueryView(this, queryController);
+            qv.setVisible(true);
         });
 
-        directoryChooserButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            int result = chooser.showOpenDialog(null);
-            if (result == JFileChooser.APPROVE_OPTION) {
-                File selectedDir = chooser.getSelectedFile();
-                myNewDirectoryField.setText(selectedDir.getAbsolutePath());
-            }
-        });
-    }
-
-    public static void createAndShowGUI(final int theWidth, final int theHeight) {
-        javax.swing.SwingUtilities.invokeLater(() -> {
-            final FileView mainPanel = new FileView();
-            fileDirectoryModel.addPropertyChangeListener(mainPanel);
-            final JFrame window = new JFrame("FileWarden");
-
-            mainPanel.setPreferredSize(new Dimension(theWidth, theHeight));
-            window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            window.setContentPane(mainPanel);
-            window.pack();
-            window.setVisible(true);
-        });
-    }
-
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        switch (evt.getPropertyName()) {
-            case "active":
-                boolean isActive = (boolean) evt.getNewValue();
-                setAllControlsEnabled(isActive);
-                myStatusLabel.setText("Status: " + (isActive ? "Active" : "Inactive"));
-                myStatusLabel.setForeground(isActive ? Color.GREEN.darker() : Color.RED);
-                if (!isActive) {
-                    myNewDirectoryField.setText("");
-                    eventLogArea.setText("");
+        exportCsvBtn.addActionListener(e -> {
+            try {
+                List<FileRecord> rows = model.getRecords();
+                if (rows.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "No records to export");
+                    return;
                 }
-                break;
+                JFileChooser chooser = new JFileChooser();
+                chooser.setSelectedFile(new File("records.csv"));
+                if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    CSVExportController.writeCsv(rows, chooser.getSelectedFile(), "Export from FileView " + LocalDateTime.now());
+                    JOptionPane.showMessageDialog(this, "CSV saved.");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Export failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
 
-            case "changeDirectory":
-                String newDir = (String) evt.getNewValue();
-                eventLogArea.append("Changed directory to: " + newDir + "\n");
-                break;
+        emailBtn.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Select CSV to email");
+            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File f = chooser.getSelectedFile();
 
-            case "monitorDirectory":
-                String eventMsg = (String) evt.getNewValue();
-                eventLogArea.append(eventMsg + "\n");
-                eventLogArea.setCaretPosition(eventLogArea.getDocument().getLength());
-                break;
+                String to = JOptionPane.showInputDialog(this, "Enter destination email:");
+                if (to == null || to.trim().isEmpty()) return;
+
+                // Ask for SMTP login details
+                JTextField user = new JTextField();
+                JPasswordField pwd = new JPasswordField();
+                Object[] msg = {
+                        "Your Gmail address:", user,
+                        "Your Gmail App Password (not your normal password):", pwd
+                };
+                int ok = JOptionPane.showConfirmDialog(
+                        this,
+                        msg,
+                        "Gmail SMTP Login",
+                        JOptionPane.OK_CANCEL_OPTION
+                );
+
+                if (ok == JOptionPane.OK_OPTION) {
+                    String senderEmail = user.getText().trim();
+                    String appPassword = new String(pwd.getPassword()).trim();
+
+                    if (senderEmail.isEmpty() || appPassword.isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "Email and password required.");
+                        return;
+                    }
+
+                    EmailService emailService = new EmailService(senderEmail, appPassword);
+
+                    try {
+                        emailService.sendEmail(
+                                to, // recipient entered earlier
+                                "File Monitor Report",
+                                "Attached is the CSV file you requested.",
+                                f.getAbsolutePath()
+                        );
+                        JOptionPane.showMessageDialog(this, "Email sent successfully!");
+                    } catch (MessagingException ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(this, "Failed to send email: " + ex.getMessage());
+                    }
+                }
+            }
+        });
+
+
+        aboutItem.addActionListener(e -> {
+            AboutDialog d = new AboutDialog(this);
+            d.setVisible(true);
+        });
+
+        clearItem.addActionListener(e -> {
+            if (JOptionPane.showConfirmDialog(this, "Clear all DB records?") == JOptionPane.YES_OPTION) {
+                try {
+                    sqlController.clearDatabase();
+                    JOptionPane.showMessageDialog(this, "DB cleared");
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(this, "Clear failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        // model listener to update table
+        model.addPropertyChangeListener(evt -> {
+            SwingUtilities.invokeLater(this::refreshTableFromModel);
+        });
+
+        // window close behavior
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                if (!model.getRecords().isEmpty()) {
+                    int res = JOptionPane.showConfirmDialog(FileView.this, "Write current contents to DB before exit?", "Exit", JOptionPane.YES_NO_CANCEL_OPTION);
+                    if (res == JOptionPane.CANCEL_OPTION) return;
+                    if (res == JOptionPane.YES_OPTION) {
+                        saveCurrentToDb();
+                    }
+                }
+                if (monitor.isRunning()) monitor.stop();
+                dispose();
+                System.exit(0);
+            }
+        });
+    }
+
+    private void startMonitoring(JLabel currentDirLabel) {
+        if (monitoredPath == null) {
+            JOptionPane.showMessageDialog(this, "Choose a directory first");
+            return;
+        }
+        try {
+            changeDirectoryController().startMonitoring(monitoredPath);
+            JOptionPane.showMessageDialog(this, "Monitoring started.");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to start: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private ChangeDirectoryController changeDirectoryController() {
+        // reflection not used; we stored the controller as a field in constructor args
+        return changeDirectoryController;
+    }
+
+    private void stopMonitoring() {
+        if (!monitor.isRunning()) {
+            JOptionPane.showMessageDialog(this, "Not running");
+            return;
+        }
+        changeDirectoryController.stopMonitoring();
+        JOptionPane.showMessageDialog(this, "Stopped monitoring.");
+    }
+
+    private void saveCurrentToDb() {
+        List<FileRecord> rows = model.getRecords();
+        if (rows.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No records to save");
+            return;
+        }
+        try {
+            sqlController.insertRecords(rows);
+            JOptionPane.showMessageDialog(this, "Saved " + rows.size() + " records to DB");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refreshTableFromModel() {
+        tableModel.setRowCount(0);
+        for (FileRecord r : model.getRecords()) {
+            tableModel.addRow(new Object[]{r.getFileName(), r.getExtension(), r.getPath(), r.getEventType(), r.getDateTimeString()});
         }
     }
 }

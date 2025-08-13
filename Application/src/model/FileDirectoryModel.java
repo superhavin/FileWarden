@@ -1,116 +1,46 @@
 package model;
 
-import controller.ChangeDirectoryController;
-
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * The model of the Application.
+ * Model storing in-memory list of FileRecord entries and notifying listeners on updates.
  */
 public class FileDirectoryModel {
-    private PropertyChangeSupport changes = new PropertyChangeSupport(this);
+    public static final String PROP_RECORDS = "records";
 
-    //properties of View
-    /**
-     * Mutable string which contains the current file directory.
-     */
-    private String myFileDirectory = "";
+    private final List<FileRecord> records;
+    private final PropertyChangeSupport pcs;
 
-    //properties of Application
-    /**
-     * Boolean for current active status.
-     */
-    private boolean isActive = false;
-
-    /**
-     * The active monitor for our the chosen directory
-     */
-    private FileMonitor myMonitor;
-
-    /**
-     * the current instance
-     */
-    private static FileDirectoryModel myInstance = null;
-
-    public FileDirectoryModel(){
-        startMonitor();
-        resetApp();
+    public FileDirectoryModel() {
+        this.records = new ArrayList<>();
+        this.pcs = new PropertyChangeSupport(this);
     }
 
-    private FileDirectoryModel(final String theStartingDirectory){
-        this();
-        changeDirectory(theStartingDirectory);
+    public synchronized void addRecord(FileRecord r) {
+        List<FileRecord> old = new ArrayList<>(records);
+        records.add(r);
+        pcs.firePropertyChange(PROP_RECORDS, old, Collections.unmodifiableList(new ArrayList<>(records)));
     }
 
-    public static FileDirectoryModel getInstance() {
-        if(myInstance == null){
-            myInstance = new FileDirectoryModel();
-        }
-        return myInstance;
+    public synchronized void clearRecords() {
+        List<FileRecord> old = new ArrayList<>(records);
+        records.clear();
+        pcs.firePropertyChange(PROP_RECORDS, old, Collections.unmodifiableList(new ArrayList<>(records)));
     }
 
-    /**
-     * Helper method to set the initial directory of the monitor
-     */
-    private void startMonitor(){
-        String oldFileDirectory = myFileDirectory;
-        myFileDirectory = ChangeDirectoryController.returnDefaultDirectory();
-
-        myMonitor = new FileMonitor(changes, myFileDirectory);
-
-        changes.firePropertyChange("changeDirectory", oldFileDirectory, myFileDirectory);
+    public synchronized List<FileRecord> getRecords() {
+        return Collections.unmodifiableList(new ArrayList<>(records));
     }
 
-    public void startApp(){
-        boolean oldActive = isActive;
-        isActive = true;
-        changes.firePropertyChange("active", oldActive, isActive);
+    public void addPropertyChangeListener(PropertyChangeListener l) {
+        pcs.addPropertyChangeListener(l);
     }
 
-    public void resetApp() {
-        startMonitor();
-
-        boolean oldActive = isActive;
-        isActive = false;
-        changes.firePropertyChange("active", oldActive, isActive);
-    }
-
-    /**
-     * Changes the directory, and stops monitoring
-     * Fires into view the new directory
-     * @param theDirectory the new directory
-     */
-    public void changeDirectory(final String theDirectory) {
-        String oldDirectory = myFileDirectory;
-        myFileDirectory = theDirectory;
-
-        myMonitor.stopMonitoring();
-        myMonitor.captureDirectory(myFileDirectory);
-        changes.firePropertyChange("changeDirectory", oldDirectory, myFileDirectory);
-    }
-
-    private String getDirectory(){
-        return myFileDirectory;
-    }
-
-    /**
-     * returns directory and fires monitor to update the basic view and monitors directory.
-     * myFileDirectory -> myDisplayLabel. myMonitor.fireDirectory() -> myDirectoryLabel.
-     */
-    public void displayDirectory(){
-        myMonitor.monitorDirectory(); //monitors the directory fires changes to view
-    }
-
-    public boolean getGameActive() {
-        return isActive;
-    }
-
-    public void addPropertyChangeListener(final PropertyChangeListener theListener) {
-        changes.addPropertyChangeListener(theListener);
-    }
-
-    public void removePropertyChangeListener(final PropertyChangeListener theListener){
-        changes.removePropertyChangeListener(theListener);
+    public void removePropertyChangeListener(PropertyChangeListener l) {
+        pcs.removePropertyChangeListener(l);
     }
 }
