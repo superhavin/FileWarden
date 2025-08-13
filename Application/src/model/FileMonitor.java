@@ -1,5 +1,6 @@
 package model;
 
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.nio.file.*;
@@ -10,39 +11,45 @@ import java.nio.file.*;
  */
 public class FileMonitor {
 
-    private final PropertyChangeSupport changes;
     /**
-     *
+     * PropertyChangeSupport for the instantiated windows
+     */
+    private final PropertyChangeSupport windowChanges = new PropertyChangeSupport(this);
+    /**
+     * WatchService for the monitor.
      */
     private WatchService myWatchService;
     /**
-     *
+     * String for the directory.
      */
     private String myDirectoryString;
     /**
-     *
+     * Path of the directory.
      */
     private Path myPath;
     /**
-     * boolean if the directory is monitored.
+     * Boolean to check if the directory is monitored.
      */
     private volatile boolean isMonitoringActive;
     /**
-     *
+     * The previous file event.
      */
-    private String myOldValue;
+    private FileEvent myOldFileEvent;
     /**
-     *
+     * The current thread for the WatchService.
      */
     private Thread monitorThread;
 
-    public FileMonitor(final PropertyChangeSupport thePropertyChange, final String theDirectory){
-        changes = thePropertyChange;
+    /**
+     * Constructor of the File Monitor.
+     * @param theDirectory the directory being monitored.
+     */
+    public FileMonitor(final String theDirectory){
         myWatchService = null;
         myDirectoryString = "";
         myPath = null;
         isMonitoringActive = false;
-        myOldValue = "";
+        myOldFileEvent = null;
         monitorThread = null;
 
         try{
@@ -53,8 +60,12 @@ public class FileMonitor {
         }
 
         captureDirectory(theDirectory);
+        monitorDirectory();
     }
 
+    /**
+     * Attempts to register the directory.
+     */
     private void registerDirectory(){
         try {
             myPath.register(myWatchService,
@@ -69,8 +80,8 @@ public class FileMonitor {
     }
 
     /**
-     * sets the file Directory of
-     * @param theDirectory the file directory
+     * Sets the captured directory, then registers it.
+     * @param theDirectory the file directory.
      */
     public void captureDirectory(final String theDirectory) {
         //assumes theDirectory is valid
@@ -83,19 +94,16 @@ public class FileMonitor {
     }
 
     /**
-     * fired information from the captured directory
+     * Fired fileEvent from the captured directory.
      */
-    private void fireDirectory(final WatchEvent<?> event){
-
-        String fileEvent = "Event kind: " + event.kind() + ". File affected: " + event.context();
-        //add additional firing
-        System.out.println(fileEvent);
-        changes.firePropertyChange("monitorDirectory", myOldValue, fileEvent); //check if data is equal, does not fire
-        myOldValue = fileEvent;
+    private void fireDirectory(final FileEvent theEvent){
+        //add additional firing support
+        windowChanges.firePropertyChange("monitorDirectory", myOldFileEvent, theEvent); //check if data is equal, does not fire
+        myOldFileEvent = theEvent;
     }
 
     /**
-     * is periodically called view changes and fire changes to view
+     * To start monitoring the directory.
      */
     public void monitorDirectory(){
         if(isMonitoringActive){
@@ -109,7 +117,8 @@ public class FileMonitor {
                 try {
                     WatchKey key = myWatchService.take();
                     for (WatchEvent<?> event : key.pollEvents()) {
-                        fireDirectory(event);
+                        FileEvent theEvent = new FileEvent(event, myPath);
+                        fireDirectory(theEvent);
                     }
 
                     boolean valid = key.reset();
@@ -129,6 +138,9 @@ public class FileMonitor {
         monitorThread.start();
     }
 
+    /**
+     * To stop monitoring the directory.
+     */
     public void stopMonitoring(){
         isMonitoringActive = false;
         if(monitorThread != null){
@@ -138,7 +150,11 @@ public class FileMonitor {
         }
     }
 
-    private boolean isMonitoring(){
-        return isMonitoringActive;
+    public void addPropertyChangeListener(final PropertyChangeListener theListener) {
+        windowChanges.addPropertyChangeListener(theListener);
+    }
+
+    public void removePropertyChangeListener(final PropertyChangeListener theListener){
+        windowChanges.removePropertyChangeListener(theListener);
     }
 }

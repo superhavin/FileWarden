@@ -1,6 +1,8 @@
 package controller;
 
 
+import model.FileDirectoryModel;
+
 import java.util.Objects;
 
 /**
@@ -12,10 +14,9 @@ public class ChangeDirectoryController {
      */
     private final static String EMPTY_STRING = "";
     /**
-     *
+     * String name of the operating system.
      */
     private final static String OS = System.getProperty("os.name");
-
     /**
      * Method to verify the directory String.
      * Refines directory strings to be exceptionable (with the Operating System).
@@ -36,8 +37,8 @@ public class ChangeDirectoryController {
     }
 
     /**
-     * The default directory changes depending on the operating system
-     * @return the default directory
+     * The default directory changes depending on the operating system.
+     * @return the default directory.
      */
     public static String returnDefaultDirectory(){
         if(OS.contains("Linux")){
@@ -51,11 +52,12 @@ public class ChangeDirectoryController {
         }
     }
 
+    /**
+     * Better visualization for the directory string.
+     * @param theDirectory the directory.
+     * @return the better directory.
+     */
     public static String visualizeDirectory(final String theDirectory) {
-        String directory;
-
-        directory = Objects.requireNonNullElse(theDirectory, EMPTY_STRING); //might need a try catch for null
-
-        return directory;
+        return refineDirectory(theDirectory);
     }
 }

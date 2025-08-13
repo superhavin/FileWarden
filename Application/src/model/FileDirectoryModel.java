@@ -4,18 +4,27 @@ import controller.ChangeDirectoryController;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * The model of the Application.
  */
 public class FileDirectoryModel {
-    private PropertyChangeSupport changes = new PropertyChangeSupport(this);
+    /**
+     * PropertyChangeSupport for the view
+     */
+    private final PropertyChangeSupport viewChanges = new PropertyChangeSupport(this);
 
-    //properties of View
+    /**
+     * The default directory in cases of resetting the application.
+     */
+    private static final String HOME_DIRECTORY = ChangeDirectoryController.returnDefaultDirectory();
     /**
      * Mutable string which contains the current file directory.
      */
-    private String myFileDirectory = "";
+    private ArrayList<String> myFileDirectories;
 
     //properties of Application
     /**
@@ -26,7 +35,7 @@ public class FileDirectoryModel {
     /**
      * The active monitor for our the chosen directory.
      */
-    private FileMonitor myMonitor;
+    private final Map<String, FileMonitor> myMonitors;
 
     /**
      * the current instance
@@ -34,15 +43,16 @@ public class FileDirectoryModel {
     private static FileDirectoryModel myInstance = null;
 
     public FileDirectoryModel(){
-        startMonitor();
+        myMonitors = new HashMap<>();
+        myFileDirectories = new ArrayList<>();
+
         resetApp();
     }
 
-    private FileDirectoryModel(final String theStartingDirectory){
-        this();
-        changeDirectory(theStartingDirectory);
-    }
-
+    /**
+     * Grabs the current fileDirectoryModel instance.
+     * @return current fileDirectoryMode.
+     */
     public static FileDirectoryModel getInstance() {
         if(myInstance == null){
             myInstance = new FileDirectoryModel();
@@ -51,66 +61,109 @@ public class FileDirectoryModel {
     }
 
     /**
-     * Helper method to set the initial directory of the monitor
+     * Start of application.
      */
-    private void startMonitor(){
-        String oldFileDirectory = myFileDirectory;
-        myFileDirectory = ChangeDirectoryController.returnDefaultDirectory();
-
-        myMonitor = new FileMonitor(changes, myFileDirectory);
-
-        changes.firePropertyChange("changeDirectory", oldFileDirectory, myFileDirectory);
-    }
-
     public void startApp(){
         boolean oldActive = isActive;
         isActive = true;
-        changes.firePropertyChange("active", oldActive, isActive);
+        viewChanges.firePropertyChange("active", oldActive, isActive);
     }
 
+    /**
+     * Reset condition for application.
+     * Clears all the file directories,
+     * Then fire a change to the View to reset all its properties,
+     * Within the View change also resets the Windows and their Monitors.
+     */
     public void resetApp() {
-        startMonitor();
+        if(!myFileDirectories.isEmpty()) {
+            renewFileDirectory();
+        }
 
         boolean oldActive = isActive;
         isActive = false;
-        changes.firePropertyChange("active", oldActive, isActive);
+        viewChanges.firePropertyChange("active", oldActive, isActive);
     }
 
     /**
-     * Changes the directory, and stops monitoring
-     * Fires into view the new directory
-     * @param theDirectory the new directory
+     * Helper method to add a new directory to the directory collection.
+     * Fires into View the new directory.
+     * @param theDirectory the new directory.
      */
-    public void changeDirectory(final String theDirectory) {
-        String oldDirectory = myFileDirectory;
-        myFileDirectory = theDirectory;
+    void addDirectory(final String theDirectory) {
+        String lastDirectory;
+        if(!myFileDirectories.isEmpty()){
+            lastDirectory = myFileDirectories.getLast();
+        }else{
+            lastDirectory = HOME_DIRECTORY;
+        }
+        myFileDirectories.add(theDirectory);
 
-        myMonitor.stopMonitoring();
-        myMonitor.captureDirectory(myFileDirectory);
-        changes.firePropertyChange("changeDirectory", oldDirectory, myFileDirectory);
-    }
+        final String NEW_DIRECTORY = myFileDirectories.getLast();
 
-    private String getDirectory(){
-        return myFileDirectory;
+        viewChanges.firePropertyChange("changeDirectory", lastDirectory, NEW_DIRECTORY);
     }
 
     /**
-     * returns directory and fires monitor to update the basic view and monitors directory.
-     * myFileDirectory -> myDisplayLabel. myMonitor.fireDirectory() -> myDirectoryLabel.
+     * Helper method to set the clear the directory collection.
+     * Fires into View a default directory
      */
-    public void displayDirectory(){
-        myMonitor.monitorDirectory(); //monitors the directory fires changes to view
+    private void renewFileDirectory(){
+        final String OLD_DIRECTORY = myFileDirectories.getLast();
+        myFileDirectories.clear();
+        viewChanges.firePropertyChange("changeDirectory", OLD_DIRECTORY, HOME_DIRECTORY);
     }
 
-    public boolean getGameActive() {
+    /**
+     * Starts the monitor for the directory, and connects the window to the monitor.
+     * @param theDirectory the directory being monitored.
+     * @param theWindows the directory's windows property change listener.
+     */
+    public void startMonitoring(final String theDirectory, final PropertyChangeListener theWindows){
+        if(!myFileDirectories.contains(theDirectory)){ //!myMonitors.containsKey(theDirectory)
+            addDirectory(theDirectory);
+
+            FileMonitor theMonitor = new FileMonitor(theDirectory);
+            theMonitor.addPropertyChangeListener(theWindows);
+            myMonitors.put(theDirectory, theMonitor);
+        }
+    }
+
+    /**
+     * Stops a monitor then removes it from the Map of monitors.
+     * Removes the directory from the collection of fileDirectories.
+     * Fire to the view to remove any visuals from the old directory.
+     * @param theDirectory the directory which is being removed.
+     */
+    public void stopMonitoring(String theDirectory) {
+        FileMonitor theMonitor = myMonitors.remove(theDirectory);
+        myFileDirectories.remove(theDirectory);
+        if(theMonitor != null){
+            theMonitor.stopMonitoring();
+            viewChanges.firePropertyChange("stopDirectory", theDirectory, null);
+        }
+    }
+
+    /**
+     * @return active status of the application.
+     */
+    public boolean isActive() {
         return isActive;
     }
 
+    /**
+     * @param theDirectory the incoming directory.
+     * @return true if the directory is contained in the file directory collection.
+     */
+    public boolean containsDirectory(final String theDirectory){
+        return myFileDirectories.contains(theDirectory);
+    }
+
     public void addPropertyChangeListener(final PropertyChangeListener theListener) {
-        changes.addPropertyChangeListener(theListener);
+        viewChanges.addPropertyChangeListener(theListener);
     }
 
     public void removePropertyChangeListener(final PropertyChangeListener theListener){
-        changes.removePropertyChangeListener(theListener);
+        viewChanges.removePropertyChangeListener(theListener);
     }
 }
