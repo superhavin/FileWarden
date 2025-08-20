@@ -6,26 +6,24 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.AbstractCollection;
 
 /**
  * Exports query results to CSV with metadata header.
  */
 public class CSVExportController {
-    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     /**
      * Writes given records to the CSV file. Prepend metadata about query (text).
      * @param records rows to write
      * @param csvFile destination file
      * @param queryDescription textual description of the query performed
      */
-    public static void writeCsv(List<FileRecord> records, File csvFile, String queryDescription) throws Exception {
+    public static void writeCsv(AbstractCollection<FileRecord> records, File csvFile, String queryDescription) throws Exception {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(csvFile))) {
             // metadata header
             bw.write("# Query: " + (queryDescription == null ? "" : queryDescription));
             bw.newLine();
-            bw.write("# Exported: " + java.time.LocalDateTime.now().format(DT_FMT));
+            bw.write("# Exported: " + java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             bw.newLine();
             // CSV headers
             bw.write("file_name,extension,path,event_type,date_time");
@@ -36,7 +34,7 @@ public class CSVExportController {
                         csvEscape(r.getExtension()) + "," +
                         csvEscape(r.getPath()) + "," +
                         csvEscape(r.getEventType()) + "," +
-                        csvEscape(r.getDateTime().format(DT_FMT)));
+                        csvEscape(r.getDateTimeString()));
                 bw.newLine();
             }
             bw.flush();

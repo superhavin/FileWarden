@@ -1,12 +1,10 @@
 package model;
 
-import controller.ChangeDirectoryController;
+import view.FileView;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * The model of the Application.
@@ -20,23 +18,19 @@ public class FileDirectoryModel {
     /**
      * The default directory in cases of resetting the application.
      */
-    private static final String HOME_DIRECTORY = ChangeDirectoryController.returnDefaultDirectory();
+    private static final String HOME_DIRECTORY = returnDefaultDirectory();;
     /**
      * Mutable string which contains the current file directory.
      */
-    private ArrayList<String> myFileDirectories;
-
-    //properties of Application
-    /**
-     * Boolean for current active status.
-     */
-    private boolean isActive = false;
-
+    private final Deque<String> myFileDirectories;
     /**
      * The active monitor for our the chosen directory.
      */
     private final Map<String, FileMonitor> myMonitors;
-
+    /**
+     * Boolean for current active status.
+     */
+    private boolean isActive = false;
     /**
      * the current instance
      */
@@ -44,7 +38,7 @@ public class FileDirectoryModel {
 
     public FileDirectoryModel(){
         myMonitors = new HashMap<>();
-        myFileDirectories = new ArrayList<>();
+        myFileDirectories = new ArrayDeque<>();
 
         resetApp();
     }
@@ -66,7 +60,7 @@ public class FileDirectoryModel {
     public void startApp(){
         boolean oldActive = isActive;
         isActive = true;
-        viewChanges.firePropertyChange("active", oldActive, isActive);
+        viewChanges.firePropertyChange(FileView.ACTIVE, oldActive, isActive);
     }
 
     /**
@@ -77,12 +71,12 @@ public class FileDirectoryModel {
      */
     public void resetApp() {
         if(!myFileDirectories.isEmpty()) {
-            renewFileDirectory();
+            clearFileDirectory();
         }
 
         boolean oldActive = isActive;
         isActive = false;
-        viewChanges.firePropertyChange("active", oldActive, isActive);
+        viewChanges.firePropertyChange(FileView.ACTIVE, oldActive, isActive);
     }
 
     /**
@@ -90,28 +84,24 @@ public class FileDirectoryModel {
      * Fires into View the new directory.
      * @param theDirectory the new directory.
      */
-    void addDirectory(final String theDirectory) {
-        String lastDirectory;
-        if(!myFileDirectories.isEmpty()){
-            lastDirectory = myFileDirectories.getLast();
-        }else{
-            lastDirectory = HOME_DIRECTORY;
-        }
+    private void addDirectory(final String theDirectory) {
+        String lastDirectory = myFileDirectories.isEmpty() ? HOME_DIRECTORY : myFileDirectories.getLast();
+
         myFileDirectories.add(theDirectory);
 
         final String NEW_DIRECTORY = myFileDirectories.getLast();
 
-        viewChanges.firePropertyChange("changeDirectory", lastDirectory, NEW_DIRECTORY);
+        viewChanges.firePropertyChange(FileView.CHANGE_DIRECTORY, lastDirectory, NEW_DIRECTORY);
     }
 
     /**
      * Helper method to set the clear the directory collection.
      * Fires into View a default directory
      */
-    private void renewFileDirectory(){
-        final String OLD_DIRECTORY = myFileDirectories.getLast();
+    private void clearFileDirectory(){
+        final String OLD_DIRECTORY = myFileDirectories.peekLast();
         myFileDirectories.clear();
-        viewChanges.firePropertyChange("changeDirectory", OLD_DIRECTORY, HOME_DIRECTORY);
+        viewChanges.firePropertyChange(FileView.CHANGE_DIRECTORY, OLD_DIRECTORY, HOME_DIRECTORY);
     }
 
     /**
@@ -152,11 +142,43 @@ public class FileDirectoryModel {
     }
 
     /**
+     * @return string of the home directory.
+     */
+    public static String getHomeDirectory(){
+        return HOME_DIRECTORY;
+    }
+
+    /**
      * @param theDirectory the incoming directory.
      * @return true if the directory is contained in the file directory collection.
      */
     public boolean containsDirectory(final String theDirectory){
         return myFileDirectories.contains(theDirectory);
+    }
+
+    /**
+     * @return the default home directory of the system.
+     */
+    private static String returnDefaultDirectory(){
+        try{
+            String aHomeDirectory = System.getProperty("user.home");
+            if(aHomeDirectory != null && !aHomeDirectory.isBlank()){
+                return aHomeDirectory;
+            }
+
+            String aOs = System.getProperty("os.name").toLowerCase();
+            if(aOs.contains("win")){
+                return "C:\\";
+            } else if (aOs.contains("mac")) {
+                return "/Users";
+            } else if(aOs.contains("nix") || aOs.contains("nux")){
+                return "/home";
+            } else{
+                return "/";
+            }
+        } catch (Exception theException) {
+            return "/";
+        }
     }
 
     public void addPropertyChangeListener(final PropertyChangeListener theListener) {

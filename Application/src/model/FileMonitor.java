@@ -10,7 +10,6 @@ import java.nio.file.*;
  * Lives in the model.
  */
 public class FileMonitor {
-
     /**
      * PropertyChangeSupport for the instantiated windows
      */
@@ -19,10 +18,6 @@ public class FileMonitor {
      * WatchService for the monitor.
      */
     private WatchService myWatchService;
-    /**
-     * String for the directory.
-     */
-    private String myDirectoryString;
     /**
      * Path of the directory.
      */
@@ -39,6 +34,14 @@ public class FileMonitor {
      * The current thread for the WatchService.
      */
     private Thread monitorThread;
+    /**
+     *
+     */
+    private RecentDelete aLastDeleted = null;
+    /**
+     * 500ms.
+     */
+    private static final int DELETE_PROCESS_TRIGGER = 500;
 
     /**
      * Constructor of the File Monitor.
@@ -46,7 +49,6 @@ public class FileMonitor {
      */
     public FileMonitor(final String theDirectory){
         myWatchService = null;
-        myDirectoryString = "";
         myPath = null;
         isMonitoringActive = false;
         myOldFileEvent = null;
@@ -84,22 +86,57 @@ public class FileMonitor {
      * @param theDirectory the file directory.
      */
     public void captureDirectory(final String theDirectory) {
-        //assumes theDirectory is valid
-
-        if(!theDirectory.equals(myDirectoryString)){ //check if the directory has changed
-            myPath = Paths.get(theDirectory);
-            registerDirectory();
-            myDirectoryString = theDirectory;
-        }
+        myPath = Paths.get(theDirectory);
+        registerDirectory();
     }
 
     /**
      * Fired fileEvent from the captured directory.
      */
     private void fireDirectory(final FileEvent theEvent){
-        //add additional firing support
         windowChanges.firePropertyChange("monitorDirectory", myOldFileEvent, theEvent); //check if data is equal, does not fire
         myOldFileEvent = theEvent;
+    }
+
+    private static class RecentDelete{
+        final String myFileName;
+        final long myTimeStamp;
+
+        RecentDelete(final String theFileName, final long theTimestamp){
+            myFileName = theFileName;
+            myTimeStamp = theTimestamp;
+        }
+    }
+
+    private void processEvent(final WatchEvent<?> theEvent, final Path myPath){
+        WatchEvent.Kind<?> theKind = theEvent.kind();
+
+        if(theKind == StandardWatchEventKinds.OVERFLOW){
+            return;
+        }
+
+        Path theContent = (Path) theEvent.context();
+
+        if(theKind == StandardWatchEventKinds.ENTRY_DELETE){
+            aLastDeleted = new RecentDelete(theContent.toString(), System.currentTimeMillis());
+        }else if(theKind == StandardWatchEventKinds.ENTRY_CREATE) {
+            if(aLastDeleted != null
+                    && (System.currentTimeMillis() - aLastDeleted.myTimeStamp) < DELETE_PROCESS_TRIGGER
+            ){
+                FileEvent aRenameEvent = new FileEvent(
+                        new SimpleWatchEvent<>("ENTRY_RENAME", theContent),
+                        myPath
+                );
+
+                fireDirectory(aRenameEvent);
+
+                aLastDeleted = null;
+                return;
+            }
+        }
+
+        FileEvent aFileEvent = new FileEvent(new SimpleWatchEvent<>(theKind.name(), theContent), myPath);
+        fireDirectory(aFileEvent);
     }
 
     /**
@@ -117,18 +154,16 @@ public class FileMonitor {
                 try {
                     WatchKey key = myWatchService.take();
                     for (WatchEvent<?> event : key.pollEvents()) {
-                        FileEvent theEvent = new FileEvent(event, myPath);
-                        fireDirectory(theEvent);
+
+                        processEvent(event, myPath);
                     }
 
                     boolean valid = key.reset();
 
                     if (!valid) {
-                        System.out.println("WatchKey no longer valid. Stopping monitor.");
                         break;
                     }
                 } catch (InterruptedException e) {
-                    System.out.println("Monitor Thread Stopped");
                     Thread.currentThread().interrupt();
                     break;
                 }
@@ -156,5 +191,45 @@ public class FileMonitor {
 
     public void removePropertyChangeListener(final PropertyChangeListener theListener){
         windowChanges.removePropertyChangeListener(theListener);
+    }
+}
+
+/**
+ * private helper class which allows us to make custom kind
+ * @param <T>
+ */
+class SimpleWatchEvent<T> implements WatchEvent<T>{
+    private final Kind<T> myKind;
+    private final T myContext;
+
+    public SimpleWatchEvent(final String theKindName, final T theContext){
+        myKind = new Kind<T>() {
+            @Override
+            public String name() {
+                return theKindName;
+            }
+
+            @Override
+            public Class<T> type() {
+                return (Class<T>) theContext.getClass();
+            }
+        };
+        myContext = theContext;
+    }
+
+
+    @Override
+    public Kind<T> kind() {
+        return myKind;
+    }
+
+    @Override
+    public int count() {
+        return 1;
+    }
+
+    @Override
+    public T context() {
+        return myContext;
     }
 }

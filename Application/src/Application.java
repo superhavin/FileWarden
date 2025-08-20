@@ -1,37 +1,24 @@
-import controller.ChangeDirectoryController;
-import controller.SQLController;
-import controller.QueryController;
-import model.FileDirectoryModel;
-import model.FileMonitor;
 import view.FileView;
 
-import javax.swing.*;
+import com.formdev.flatlaf.FlatDarkLaf;
+import javax.swing.UIManager;
 
+/**
+ * Exists to instantiate the view and manages IO
+ */
 public class Application {
+    // Name-constants to define the various dimensions
+    public static final int WINDOW_WIDTH = 900;
+    public static final int WINDOW_HEIGHT = 600;
+
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                // set system look and feel
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {}
+        try{
+            UIManager.setLookAndFeel(new FlatDarkLaf());
+        } catch (Exception e) {
+            System.err.println("Failed to initialize theme.");
+        }
 
-            // Model
-            FileDirectoryModel directoryModel = new FileDirectoryModel();
-
-            // SQL controller
-            SQLController sqlController = new SQLController("filewatcher.db");
-
-            // FileMonitor (not started yet)
-            FileMonitor fileMonitor = new FileMonitor(directoryModel);
-
-            // Controllers
-            ChangeDirectoryController changeDirController = new ChangeDirectoryController(fileMonitor, directoryModel);
-            QueryController queryController = new QueryController(sqlController);
-
-            // View
-            FileView mainView = new FileView(directoryModel, fileMonitor, sqlController, changeDirController, queryController);
-
-            mainView.setVisible(true);
-        });
+        FileView.createAndShowGUI(WINDOW_WIDTH, WINDOW_HEIGHT);
     }
 }

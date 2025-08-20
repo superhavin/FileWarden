@@ -8,13 +8,13 @@ import java.awt.*;
  */
 public class AboutDialog extends JDialog {
     public AboutDialog(Frame owner) {
-        super(owner, "About FileWatcher", true);
+        super(owner, "About FileWarden", true);
         JTextArea info = new JTextArea(
                 "FileWatcher\n" +
                         "Version: 1.0\n" +
-                        "Developer: Abdulrahman Hassan and Kevin Kamau\n\n" +
-                        "Usage: Choose a directory, set file extensions to watch, Start.\n" +
-                        "Events will appear in the table; you can Save to DB and run queries.\n"
+                        "Developer: Kevin Kamau and Abdulrahman Hassan\n\n" +
+                        "Usage: Choose a directory, set file directory to watch, Start.\n" +
+                        "Events will appear in a window; you can Save to DB and run queries.\n"
         );
         info.setEditable(false);
         info.setWrapStyleWord(true);
