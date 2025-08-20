@@ -20,7 +20,7 @@ public class FileEvent{
     private final static String DELETED_FILE_DIALOG = "deleted";
     private final static String RENAMED_FILE_DIALOG = "renamed";
 
-    FileEvent(WatchEvent<?> theFileEvent, Path thePath){
+    FileEvent(final WatchEvent<?> theFileEvent, final Path thePath){
         if(theFileEvent == null){
             throw new NullPointerException("event is null.");
         }
