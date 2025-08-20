@@ -149,7 +149,7 @@ public class FileView extends JFrame implements PropertyChangeListener, Serializ
 
     private void addListeners() {
 
-        ActionListener togglingEvent = aTogglingEvent -> {
+        final ActionListener togglingEvent = aTogglingEvent -> {
             if(!fileDirectoryModel.isActive()){
                 fileDirectoryModel.startApp();
             }else{
@@ -158,7 +158,7 @@ public class FileView extends JFrame implements PropertyChangeListener, Serializ
             }
         };
 
-        ActionListener monitoringEvent = aMonitoringEvent -> {
+        final ActionListener monitoringEvent = aMonitoringEvent -> {
             String currentFileDirectory = returnDirectory();
             boolean isValidDirectory = (currentFileDirectory != null && !currentFileDirectory.isBlank());
 
@@ -180,7 +180,7 @@ public class FileView extends JFrame implements PropertyChangeListener, Serializ
             }
         };
 
-        ActionListener exitingEvent = aExitingEvent -> {
+        final ActionListener exitingEvent = aExitingEvent -> {
             fileDirectoryModel.resetApp();
             try {
                 sqlController.clearDatabase();
@@ -191,7 +191,7 @@ public class FileView extends JFrame implements PropertyChangeListener, Serializ
             System.exit(0);
         };
 
-        ActionListener helpingEvent = aHelpingEvent -> {
+        final ActionListener helpingEvent = aHelpingEvent -> {
             AboutDialog dialogBox = new AboutDialog(getFrame());
             dialogBox.setVisible(true);
         };
@@ -236,7 +236,7 @@ public class FileView extends JFrame implements PropertyChangeListener, Serializ
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent theEvent) {
+    public void propertyChange(final PropertyChangeEvent theEvent) {
         switch (theEvent.getPropertyName()) {
             case ACTIVE:
                 setAllControls((boolean) theEvent.getNewValue());
@@ -336,22 +336,9 @@ class FileDirectoryWindow extends JPanel implements PropertyChangeListener, Seri
      */
     private transient final DefaultTableModel myTableModel;
     /**
-     * The control panel of the table.
-     */
-    private transient final JPanel myControlPanel;
-    /**
-     * The scroll pane of the table.
-     */
-    private transient final JScrollPane myTableScrollPane;
-    /**
      * Area of the windows.
      */
     private static final int WINDOW_AREA = 600;
-    private static final Component mySpacer = new Box.Filler(
-            new Dimension(0, WINDOW_AREA/2),
-            new Dimension(0,WINDOW_AREA/2),
-            new Dimension(Short.MAX_VALUE,Short.MAX_VALUE)
-    );
 
 
     /**
@@ -383,29 +370,38 @@ class FileDirectoryWindow extends JPanel implements PropertyChangeListener, Seri
         myExportToolBar.add(myExportCsvButton);
         myExportToolBar.add(myEmailDatabaseButton);
 
-        //Packing
-        myControlPanel = new JPanel(new BorderLayout());
-        myControlPanel.add(myMenuBar, BorderLayout.NORTH);
-        myControlPanel.add(myExportToolBar, BorderLayout.SOUTH);
-        myControlPanel.setMinimumSize(new Dimension(100, 80));
-
         //TableModel
         myTableModel = new DefaultTableModel(new Object[]{"File Name", "Extension", "Path", "Activity", "DataTime"}, 0);
         final JTable myTable = new JTable(myTableModel);
-        myTableScrollPane = new JScrollPane(myTable);
+        JScrollPane myTableScrollPane = new JScrollPane(myTable);
 
         //GridBagLayout Setup
         GridBagConstraints myGBC = new GridBagConstraints();
-        myGBC.gridx = 0; myGBC.gridy = 0; myGBC.weightx = 1.0; myGBC.weighty = 0.0;
+        myGBC.gridx = 0; myGBC.gridy = 0; myGBC.weightx = 1.0; myGBC.weighty = 1.0;
         myGBC.insets = new Insets(20, 20, 10,20);
-        myGBC.anchor = GridBagConstraints.CENTER;
         myGBC.fill = GridBagConstraints.BOTH;
-        add(buildTableSplit(), myGBC);
+        add(myTableScrollPane, myGBC);
 
-        myGBC.gridy = 2; myGBC.weightx = 1.0; myGBC.weighty = 1.0;
-        //myGBC.gridwidth = GridBagConstraints.REMAINDER;
-        myGBC.fill = GridBagConstraints.BOTH;
-        add(mySpacer, myGBC); //Empty Spacer
+        //Packing
+        JPanel myControlPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints myControllerGBC = new GridBagConstraints();
+        myControllerGBC.gridx = 0;
+        myControllerGBC.gridwidth = GridBagConstraints.CENTER;
+        myControllerGBC.weightx = 1.0;
+        myControllerGBC.insets = new Insets(5, 5, 5, 5);
+
+        myControllerGBC.gridy = 0; myControllerGBC.weighty = 0.0;
+        myControllerGBC.fill = GridBagConstraints.HORIZONTAL;
+        myControlPanel.add(myMenuBar, myControllerGBC);
+
+        myControllerGBC.gridy = 2; myControllerGBC.weighty = 0.0;
+        myControllerGBC.fill = GridBagConstraints.HORIZONTAL;
+        myControlPanel.add(myExportToolBar, myControllerGBC);
+
+        myControlPanel.setMinimumSize(new Dimension(WINDOW_AREA / 4, WINDOW_AREA / 7));
+        myGBC.gridy = 1; myGBC.weighty = 0.0;
+        myGBC.fill = GridBagConstraints.HORIZONTAL;
+        add(myControlPanel, myGBC);
 
         //Final Setup
         myWindow = new JFrame(myDirectoryString);
@@ -420,66 +416,10 @@ class FileDirectoryWindow extends JPanel implements PropertyChangeListener, Seri
         addListeners();
     }
 
-    private JSplitPane buildTableSplit(){
-        final JTable myTable = new JTable(myTableModel);
-        myTable.setFillsViewportHeight(true);
-        myTable.setRowSelectionAllowed(true);
-        myTable.setShowGrid(false);
-        myTable.setIntercellSpacing(new Dimension(0, 0));
-
-        myTableScrollPane.getViewport().addComponentListener(new ComponentAdapter() {
-            private final Font baseFont = myTable.getFont();
-            private final int baseRowHeight= myTable.getRowHeight();
-
-            @Override
-            public void componentResized(ComponentEvent e) {
-                int viewH = myTable.getVisibleRect().height;
-                int rowCount = Math.max(1, myTable.getRowCount());
-
-                double rowScale = (double)viewH / (rowCount * baseRowHeight);
-                double fontScale = (double)viewH / 400;
-
-                int newRowH = (int)(baseRowHeight * rowScale);
-                myTable.setRowHeight(Math.max(baseRowHeight, newRowH));
-
-                float newSize = (float)(baseFont.getSize2D() * fontScale);
-                Font scaled = baseFont.deriveFont(Math.max(baseFont.getSize2D(),newSize));
-                myTable.setFont(scaled);
-                myTable.getTableHeader().setFont(scaled);
-
-                myTable.revalidate();
-                myTable.repaint();
-            }
-        });
-        myTable.setPreferredScrollableViewportSize(new Dimension(WINDOW_AREA,WINDOW_AREA/2));
-
-        JScrollBar myVerticalBar = myTableScrollPane.getVerticalScrollBar();
-        myVerticalBar.addAdjustmentListener(aListener -> adjustSpacer(aListener.getValue(),
-                myVerticalBar.getMaximum() - myVerticalBar.getVisibleAmount()));
-
-        JSplitPane myTableSplit = new JSplitPane(
-                JSplitPane.VERTICAL_SPLIT,
-                myTableScrollPane,
-                myControlPanel
-        );
-        myTableSplit.setOneTouchExpandable(true);
-        myTableSplit.setResizeWeight(0.9);
-        myTableSplit.setDividerLocation(0.85);
-
-        return myTableSplit;
-    }
-
-    private void adjustSpacer(final int theScrollValue, final int theScrollRange) {
-        double aFraction = theScrollRange > 0 ? 1.0 - (double) theScrollValue / theScrollRange : 1.0;
-
-        int aNewHeight = (int) (200 * aFraction);
-        aNewHeight = Math.max(0, Math.min(200, aNewHeight));
-
-        mySpacer.setPreferredSize(new Dimension(0, aNewHeight));
-        System.out.println(mySpacer.getSize().toString());
-        mySpacer.getParent().revalidate();
-    }
-
+    /**
+     * A setter for the Window Title.
+     * @param theNumberOfActions the int of the current number of actions
+     */
     private void incrementTitle(final int theNumberOfActions) {
         myWindow.setTitle(theNumberOfActions + " : " + myDirectoryString);
     }

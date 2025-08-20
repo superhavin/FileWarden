@@ -8,47 +8,47 @@ import java.util.Objects;
  * Represents a single file event record.
  */
 public class FileRecord {
-    private final String fileName;
-    private final String extension;
-    private final String path;
-    private final String eventType; // CREATED, MODIFIED, DELETED, RENAMED
-    private final LocalDateTime dateTime;
-    private final String dateTimeFormatted;
+    private final String myFileName;
+    private final String myExtension;
+    private final String myPath;
+    private final String myEventType; // CREATED, MODIFIED, DELETED, RENAMED
+    private final LocalDateTime myDateTime;
+    private final String myDateTimeString;
 
     public FileRecord(final String theFileName, final String theExtension, final String thePath, final String theEventType, final LocalDateTime theDateTime) {
-        fileName = theFileName;
-        extension = theExtension;
-        path = thePath;
-        eventType = theEventType;
-        dateTime = theDateTime;
-        dateTimeFormatted = theDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        myFileName = theFileName;
+        myExtension = theExtension;
+        myPath = thePath;
+        myEventType = theEventType;
+        myDateTime = theDateTime;
+        myDateTimeString = theDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
     public FileRecord(final FileEvent theEvent){
-        fileName = theEvent.fileTitle();
-        extension = theEvent.fileExtension();
-        path = theEvent.filePath().toString();
-        eventType = theEvent.eventType();
-        dateTime = theEvent.getMyTimeStamp();
-        dateTimeFormatted = theEvent.getTime();
+        myFileName = theEvent.fileTitle();
+        myExtension = theEvent.fileExtension();
+        myPath = theEvent.filePath().toString();
+        myEventType = theEvent.eventType();
+        myDateTime = theEvent.getMyTimeStamp();
+        myDateTimeString = theEvent.getTime();
     }
 
-    public String getFileName() { return fileName; }
-    public String getExtension() { return extension; }
-    public String getPath() { return path; }
-    public String getEventType() { return eventType; }
-    public LocalDateTime getDateTime() { return dateTime; }
-    public String getDateTimeString() { return dateTimeFormatted; }
+    public String getFileName() { return myFileName; }
+    public String getExtension() { return myExtension; }
+    public String getPath() { return myPath; }
+    public String getEventType() { return myEventType; }
+    public LocalDateTime getDateTime() { return myDateTime; }
+    public String getDateTimeString() { return myDateTimeString; }
 
     public Object[] getTableRow() { return new Object[]{getFileName(), getExtension(), getPath(), getEventType(), getDateTimeString()}; }
 
     @Override
     public String toString() {
-        return String.format("%s (%s) - %s @ %s", fileName, extension, eventType, getDateTimeString());
+        return String.format("%s (%s) - %s @ %s", myFileName, myExtension, myEventType, getDateTimeString());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fileName, extension, path, eventType, dateTime);
+        return Objects.hash(myFileName, myExtension, myPath, myEventType, myDateTime);
     }
 }

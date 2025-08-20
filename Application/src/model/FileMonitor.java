@@ -41,7 +41,7 @@ public class FileMonitor {
     /**
      * 500ms.
      */
-    private static final int DELETE_PROCESS_TRIGGER = 500;
+    private static final int RENAME_PROCESS_TRIGGER = 500;
 
     /**
      * Constructor of the File Monitor.
@@ -57,7 +57,6 @@ public class FileMonitor {
         try{
             myWatchService = FileSystems.getDefault().newWatchService();
         } catch (IOException e) {
-            e.printStackTrace();
             System.exit(0);
         }
 
@@ -76,7 +75,6 @@ public class FileMonitor {
                     StandardWatchEventKinds.ENTRY_MODIFY
                     );
         } catch (Exception e) {
-            e.printStackTrace();
             System.exit(0);
         }
     }
@@ -108,6 +106,11 @@ public class FileMonitor {
         }
     }
 
+    /**
+     * main method which processes incoming events.
+     * @param theEvent the raw event.
+     * @param myPath the path of the event.
+     */
     private void processEvent(final WatchEvent<?> theEvent, final Path myPath){
         WatchEvent.Kind<?> theKind = theEvent.kind();
 
@@ -121,7 +124,7 @@ public class FileMonitor {
             aLastDeleted = new RecentDelete(theContent.toString(), System.currentTimeMillis());
         }else if(theKind == StandardWatchEventKinds.ENTRY_CREATE) {
             if(aLastDeleted != null
-                    && (System.currentTimeMillis() - aLastDeleted.myTimeStamp) < DELETE_PROCESS_TRIGGER
+                    && (System.currentTimeMillis() - aLastDeleted.myTimeStamp) < RENAME_PROCESS_TRIGGER
             ){
                 FileEvent aRenameEvent = new FileEvent(
                         new SimpleWatchEvent<>("ENTRY_RENAME", theContent),

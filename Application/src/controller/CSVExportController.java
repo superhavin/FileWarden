@@ -13,22 +13,22 @@ import java.util.AbstractCollection;
  */
 public class CSVExportController {
     /**
-     * Writes given records to the CSV file. Prepend metadata about query (text).
-     * @param records rows to write
-     * @param csvFile destination file
-     * @param queryDescription textual description of the query performed
+     * Writes given theRecords to the CSV file. Prepend metadata about query (text).
+     * @param theRecords rows to write
+     * @param theCsvFile destination file
+     * @param theQueryDescription textual description of the query performed
      */
-    public static void writeCsv(AbstractCollection<FileRecord> records, File csvFile, String queryDescription) throws Exception {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(csvFile))) {
+    public static void writeCsv(final AbstractCollection<FileRecord> theRecords, final File theCsvFile, String theQueryDescription) throws Exception {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(theCsvFile))) {
             // metadata header
-            bw.write("# Query: " + (queryDescription == null ? "" : queryDescription));
+            bw.write("# Query: " + (theQueryDescription == null ? "" : theQueryDescription));
             bw.newLine();
             bw.write("# Exported: " + java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             bw.newLine();
             // CSV headers
             bw.write("file_name,extension,path,event_type,date_time");
             bw.newLine();
-            for (FileRecord r : records) {
+            for (FileRecord r : theRecords) {
                 // escape commas in fields by quoting if necessary
                 bw.write(csvEscape(r.getFileName()) + "," +
                         csvEscape(r.getExtension()) + "," +

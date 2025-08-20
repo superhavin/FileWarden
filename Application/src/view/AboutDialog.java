@@ -7,8 +7,8 @@ import java.awt.*;
  * Simple about/help dialog.
  */
 public class AboutDialog extends JDialog {
-    public AboutDialog(Frame owner) {
-        super(owner, "About FileWarden", true);
+    public AboutDialog(final Frame theOwner) {
+        super(theOwner, "About FileWarden", true);
         JTextArea info = new JTextArea(
                 "FileWatcher\n" +
                         "Version: 1.0\n" +
@@ -28,6 +28,6 @@ public class AboutDialog extends JDialog {
         p.add(ok);
         add(p, BorderLayout.SOUTH);
         setSize(400, 220);
-        setLocationRelativeTo(owner);
+        setLocationRelativeTo(theOwner);
     }
 }
