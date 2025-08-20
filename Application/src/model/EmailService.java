@@ -37,6 +37,14 @@ public class EmailService {
         message.setSubject(theSubject);
 
         // Email theBody + attachment
+        Multipart multipart = getMultipart(theBody, theAttachmentPath);
+
+        // Combine parts and send
+        message.setContent(multipart);
+        Transport.send(message);
+    }
+
+    private static Multipart getMultipart(String theBody, String theAttachmentPath) throws MessagingException {
         Multipart multipart = new MimeMultipart();
 
         // Body text
@@ -54,9 +62,6 @@ public class EmailService {
                 throw new MessagingException("Failed to attach file: " + theAttachmentPath, e);
             }
         }
-
-        // Combine parts and send
-        message.setContent(multipart);
-        Transport.send(message);
+        return multipart;
     }
 }

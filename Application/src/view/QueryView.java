@@ -19,12 +19,6 @@ public class QueryView extends JDialog {
     private AbstractCollection<FileRecord> myLastResults;
     private final SQLController myQueryController;
 
-    private final JButton myRunExt;
-    private final JButton myRunAct;
-    private final JButton myRunDir;
-    private final JButton myRunDates;
-    private final JButton myExportCsv;
-    private final JButton myClearDb;
     private final JTextField myStartField;
     private final JTextField myEndField;
     private final JTextField myDirField;
@@ -59,21 +53,21 @@ public class QueryView extends JDialog {
         controls.add(new JLabel("End (yyyy-MM-ddTHH:mm):"));
         controls.add(myEndField);
 
-        myRunExt = new JButton("Run Extension Query");
-        myRunAct = new JButton("Run Activity Query");
+        JButton myRunExt = new JButton("Run Extension Query");
+        JButton myRunAct = new JButton("Run Activity Query");
 
 
-        myRunDir = new JButton("Run Directory Query");
-        myRunDates = new JButton("Run Date Range Query");
+        JButton myRunDir = new JButton("Run Directory Query");
+        JButton myRunDates = new JButton("Run Date Range Query");
 
-        JPanel btnPanel = new JPanel(new GridLayout(0,1,4,4));
+        JPanel btnPanel = new JPanel(new GridLayout(0, 1, 4, 4));
         btnPanel.add(myRunExt);
         btnPanel.add(myRunAct);
         btnPanel.add(myRunDir);
         btnPanel.add(myRunDates);
 
-        myExportCsv = new JButton("Export to CSV");
-        myClearDb = new JButton("Clear DB");
+        JButton myExportCsv = new JButton("Export to CSV");
+        JButton myClearDb = new JButton("Clear DB");
 
 
         btnPanel.add(myExportCsv);
@@ -90,11 +84,10 @@ public class QueryView extends JDialog {
         close.addActionListener(e -> setVisible(false));
         add(close, BorderLayout.SOUTH);
 
+        pack();
         setSize(900, 500);
         setLocationRelativeTo(theOwner);
-    }
 
-    private void addListeners(){
         myClearDb.addActionListener(e -> {
             if (JOptionPane.showConfirmDialog(this, "Clear all DB records?") == JOptionPane.YES_OPTION) {
                 try {

@@ -6,6 +6,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.AbstractCollection;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
@@ -134,17 +135,7 @@ public class SQLController {
     }
 
     private AbstractCollection<FileRecord> rsToList(final ResultSet theResultSet) throws SQLException {
-        final AbstractCollection<FileRecord> out = new AbstractCollection<FileRecord>() {
-            @Override
-            public Iterator<FileRecord> iterator() {
-                return null;
-            }
-
-            @Override
-            public int size() {
-                return 0;
-            }
-        };
+        final AbstractCollection<FileRecord> out = new ArrayList<>();
 
         while (theResultSet.next()) {
             String fn = theResultSet.getString("file_name");

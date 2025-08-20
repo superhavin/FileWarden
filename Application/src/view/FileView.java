@@ -289,7 +289,7 @@ public class FileView extends JFrame implements PropertyChangeListener, Serializ
         for(FileDirectoryWindow window : fileDirectoryWindows){
             window.closeWindow();
         }
-        fileDirectoryWindows.clear();
+        fileDirectoryWindows.clear(); //clear database on application closure
 
         showTitleCard(true);
         revalidate();
@@ -385,9 +385,8 @@ class FileDirectoryWindow extends JPanel implements PropertyChangeListener, Seri
         //Packing
         JPanel myControlPanel = new JPanel(new GridBagLayout());
         GridBagConstraints myControllerGBC = new GridBagConstraints();
-        myControllerGBC.gridx = 0;
+        myControllerGBC.gridx = 0; myControllerGBC.weightx = 1.0;
         myControllerGBC.gridwidth = GridBagConstraints.CENTER;
-        myControllerGBC.weightx = 1.0;
         myControllerGBC.insets = new Insets(5, 5, 5, 5);
 
         myControllerGBC.gridy = 0; myControllerGBC.weighty = 0.0;
@@ -398,7 +397,7 @@ class FileDirectoryWindow extends JPanel implements PropertyChangeListener, Seri
         myControllerGBC.fill = GridBagConstraints.HORIZONTAL;
         myControlPanel.add(myExportToolBar, myControllerGBC);
 
-        myControlPanel.setMinimumSize(new Dimension(WINDOW_AREA / 4, WINDOW_AREA / 7));
+        myControlPanel.setMinimumSize(new Dimension(WINDOW_AREA / 4, WINDOW_AREA / 8));
         myGBC.gridy = 1; myGBC.weighty = 0.0;
         myGBC.fill = GridBagConstraints.HORIZONTAL;
         add(myControlPanel, myGBC);
