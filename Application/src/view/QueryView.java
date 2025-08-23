@@ -13,18 +13,40 @@ import java.util.AbstractCollection;
 
 /**
  * Query window where user runs queries, exports CSV, and emails results.
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class QueryView extends JDialog {
+    /** The table model used to display query results. */
     private final DefaultTableModel myTableModel;
+
+    /** Stores the most recent set of results from a query. */
     private AbstractCollection<FileRecord> myLastResults;
+
+    /** Controller used to execute database queries. */
     private final SQLController myQueryController;
 
+    /** Input field for start date and time. */
     private final JTextField myStartField;
+
+    /** Input field for end date and time. */
     private final JTextField myEndField;
+
+    /** Input field for directory path filtering. */
     private final JTextField myDirField;
+
+    /** Input field for file activity type filtering. */
     private final JTextField myActivityField;
+
+    /** Input field for file extension filtering. */
     private final JTextField myExtensionField;
 
+    /**
+     * Creates a new query view window where the user can perform database queries,
+     * export results to CSV, and clear records.
+     *
+     * @param theOwner the parent window
+     * @param thQueryController the SQL controller that handles database queries
+     */
     public QueryView(final Window theOwner, final SQLController thQueryController) {
         super(theOwner, "Database Query", ModalityType.APPLICATION_MODAL);
         this.myQueryController = thQueryController;
@@ -56,7 +78,6 @@ public class QueryView extends JDialog {
         JButton myRunExt = new JButton("Run Extension Query");
         JButton myRunAct = new JButton("Run Activity Query");
 
-
         JButton myRunDir = new JButton("Run Directory Query");
         JButton myRunDates = new JButton("Run Date Range Query");
 
@@ -68,7 +89,6 @@ public class QueryView extends JDialog {
 
         JButton myExportCsv = new JButton("Export to CSV");
         JButton myClearDb = new JButton("Clear DB");
-
 
         btnPanel.add(myExportCsv);
         btnPanel.add(myClearDb);
@@ -156,10 +176,21 @@ public class QueryView extends JDialog {
         });
     }
 
+    /**
+     * Populates the results table with the given collection of file records.
+     *
+     * @param rows the file records to display in the table
+     */
     private void populateTable(final AbstractCollection<FileRecord> rows) {
         myTableModel.setRowCount(0);
         for (FileRecord r : rows) {
-            myTableModel.addRow(new Object[]{r.getFileName(), r.getExtension(), r.getPath(), r.getEventType(), r.getDateTimeString()});
+            myTableModel.addRow(new Object[]{
+                    r.getFileName(),
+                    r.getExtension(),
+                    r.getPath(),
+                    r.getEventType(),
+                    r.getDateTimeString()
+            });
         }
     }
 }

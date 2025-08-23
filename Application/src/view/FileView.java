@@ -23,6 +23,7 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * The view of the Application.
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class FileView extends JFrame implements PropertyChangeListener, Serializable {
     @Serial

@@ -7,10 +7,18 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.AbstractCollection;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * SQLite controller to persist FileRecord entries and query them.
+ * <p>
+ * This class provides database access to a SQLite file named file-warden.db by default.
+ * It creates and maintains a single table file_events that stores metadata about file activity
+ * such as file name, extension, path, event type, and the time of the event.
+ * <p>
+ * The class uses the singleton pattern via getInstance() to provide
+ * a shared controller instance, though it also allows direct instantiation.
+ *
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class SQLController {
     private static final String DEFAULT_DATABASE = "file-warden.db";
@@ -18,22 +26,38 @@ public class SQLController {
     private final String myDatabasePath;
     private static SQLController myInstance = null;
 
+    /**
+     * Constructs a controller connected to the given SQLite database file.
+     *
+     * @param theDatabasePath the path to the SQLite database file
+     */
     public SQLController(final String theDatabasePath) {
         myDatabasePath = "jdbc:sqlite:" + theDatabasePath;
         initialDatabase();
     }
 
-    public SQLController(){
+    /**
+     * Constructs a controller connected to the default SQLite database file file-warden.db.
+     */
+    public SQLController() {
         this(DEFAULT_DATABASE);
     }
 
+    /**
+     * Returns the singleton instance of this controller, creating it if necessary.
+     *
+     * @return the shared SQLController instance
+     */
     public static SQLController getInstance() {
-        if(myInstance == null){
+        if (myInstance == null) {
             myInstance = new SQLController();
         }
         return myInstance;
     }
 
+    /**
+     * Initializes the database by creating the file_events table if it does not already exist.
+     */
     private void initialDatabase() {
         String ddl = "CREATE TABLE IF NOT EXISTS file_events (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -51,6 +75,12 @@ public class SQLController {
         }
     }
 
+    /**
+     * Inserts a single FileRecord into the database.
+     *
+     * @param theFileRecord the record to insert
+     * @throws SQLException if a database access error occurs
+     */
     public void insertRecord(final FileRecord theFileRecord) throws SQLException {
         String sql = "INSERT INTO file_events (file_name, extension, path, event_type, date_time) VALUES (?, ?, ?, ?, ?)";
         try (Connection c = DriverManager.getConnection(myDatabasePath);
@@ -64,6 +94,12 @@ public class SQLController {
         }
     }
 
+    /**
+     * Inserts a collection of FileRecord objects into the database in batch mode.
+     *
+     * @param theFileRecords a collection of file records to insert
+     * @throws SQLException if a database access error occurs
+     */
     public void insertRecords(final AbstractCollection<FileRecord> theFileRecords) throws SQLException {
         String sql = "INSERT INTO file_events (file_name, extension, path, event_type, date_time) VALUES (?, ?, ?, ?, ?)";
         try (Connection c = DriverManager.getConnection(myDatabasePath);
@@ -82,6 +118,13 @@ public class SQLController {
         }
     }
 
+    /**
+     * Queries all records with the given file extension.
+     *
+     * @param theExtension the file extension to filter by (may be null)
+     * @return a collection of matching file records
+     * @throws SQLException if a database access error occurs
+     */
     public AbstractCollection<FileRecord> queryByExtension(final String theExtension) throws SQLException {
         String sql = "SELECT file_name, extension, path, event_type, date_time FROM file_events WHERE extension = ?";
         try (Connection c = DriverManager.getConnection(myDatabasePath);
@@ -93,6 +136,14 @@ public class SQLController {
         }
     }
 
+    /**
+     * Queries all records within a given date-time range.
+     *
+     * @param theStart the start of the date range (inclusive)
+     * @param theEnd   the end of the date range (inclusive)
+     * @return a collection of matching file records
+     * @throws SQLException if a database access error occurs
+     */
     public AbstractCollection<FileRecord> queryByDateRange(final LocalDateTime theStart, final LocalDateTime theEnd) throws SQLException {
         String sql = "SELECT file_name, extension, path, event_type, date_time FROM file_events WHERE date_time BETWEEN ? AND ?";
         try (Connection c = DriverManager.getConnection(myDatabasePath);
@@ -105,6 +156,13 @@ public class SQLController {
         }
     }
 
+    /**
+     * Queries all records with the given event type.
+     *
+     * @param theActivity the event type to filter by (e.g., CREATED, MODIFIED, DELETED)
+     * @return a collection of matching file records
+     * @throws SQLException if a database access error occurs
+     */
     public AbstractCollection<FileRecord> queryByActivity(final String theActivity) throws SQLException {
         String sql = "SELECT file_name, extension, path, event_type, date_time FROM file_events WHERE event_type = ?";
         try (Connection c = DriverManager.getConnection(myDatabasePath);
@@ -116,6 +174,13 @@ public class SQLController {
         }
     }
 
+    /**
+     * Queries all records in a given directory path.
+     *
+     * @param theDirectoryPath the directory path prefix to filter by
+     * @return a collection of matching file records
+     * @throws SQLException if a database access error occurs
+     */
     public AbstractCollection<FileRecord> queryByDirectory(final String theDirectoryPath) throws SQLException {
         String sql = "SELECT file_name, extension, path, event_type, date_time FROM file_events WHERE path LIKE ?";
         try (Connection c = DriverManager.getConnection(myDatabasePath);
@@ -127,6 +192,11 @@ public class SQLController {
         }
     }
 
+    /**
+     * Clears all records from the file_events table.
+     *
+     * @throws SQLException if a database access error occurs
+     */
     public void clearDatabase() throws SQLException {
         try (Connection c = DriverManager.getConnection(myDatabasePath);
              Statement s = c.createStatement()) {
@@ -134,6 +204,13 @@ public class SQLController {
         }
     }
 
+    /**
+     * Converts a ResultSet into a collection of FileRecord objects.
+     *
+     * @param theResultSet the result set to process
+     * @return a collection of file records
+     * @throws SQLException if a database access error occurs
+     */
     private AbstractCollection<FileRecord> rsToList(final ResultSet theResultSet) throws SQLException {
         final AbstractCollection<FileRecord> out = new ArrayList<>();
 

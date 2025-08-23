@@ -10,6 +10,7 @@ import java.util.AbstractCollection;
 
 /**
  * Exports query results to CSV with metadata header.
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class CSVExportController {
     /**

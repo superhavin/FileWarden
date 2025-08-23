@@ -5,6 +5,8 @@ import java.awt.*;
 
 /**
  * Simple about/help dialog.
+ *
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class AboutDialog extends JDialog {
     public AboutDialog(final Frame theOwner) {

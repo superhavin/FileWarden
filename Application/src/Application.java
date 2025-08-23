@@ -5,6 +5,7 @@ import javax.swing.UIManager;
 
 /**
  * Exists to instantiate the view and manages IO
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class Application {
     // Name-constants to define the various dimensions

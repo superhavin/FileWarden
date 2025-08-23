@@ -8,6 +8,7 @@ import java.nio.file.*;
 /**
  * Class which actively monitors changes of the in the chosen Directory.
  * Lives in the model.
+ * @author Abdulrahman Hassan and Kevin Kamau
  */
 public class FileMonitor {
     /**
